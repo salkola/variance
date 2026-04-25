@@ -1,0 +1,4 @@
+Correlation Y_post vs Y_pre across Monte Carlo draws
+
+ rho_mean  rho_std  rho_min  rho_max
+  0.68421   0.0129  0.64848  0.72003
