@@ -286,7 +286,7 @@ def plot_forest_tau(
 
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.errorbar(means, y, xerr=xerr, fmt="o", color="steelblue", ecolor="black", capsize=4, markersize=5)
-    ax.axvline(truth, color="black", linestyle="--", linewidth=0.5, label="true ATE")
+    ax.axvline(truth, color="steelblue", linestyle="--", linewidth=0.5, label="true ATE")
     ax.set_yticks(y)
     ax.set_yticklabels(order, fontsize=14)
     ax.tick_params(axis="x", labelsize=14)
