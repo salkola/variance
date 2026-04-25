@@ -179,13 +179,19 @@ All figures are generated from the same MC draws and are ordered consistently by
 
 - **Relative variance vs naive** (`output/relative_variance.png`): bars show `Var(τ̂)/Var(naive)` with 90% bootstrap intervals.
 
+![](output/relative_variance.png)
+
 
 
 - **Forest plot of MC mean ATE** (`output/forest_tau.png`): points show MC mean $\hat\tau$ with 90% bootstrap intervals; the dashed vertical line is the true ATE.
 
+![](output/forest_tau.png)
+
 
 
 - **Violin plot of ATE draws** (`output/violin_ate_estimates.png`): full distribution of $\hat\tau$ across replications; dashed horizontal line is the true ATE.
+
+![](output/violin_ate_estimates.png)
 
 
 
