@@ -7,7 +7,7 @@ This repository **simulates** an ad-style **RCT** (Randomized Controlled Trial; 
 Run:
 
 ```bash
-python run_comparison.py
+python3 run_comparison.py
 ```
 
 Plots (`violin_ate_estimates.png`, `relative_variance.png`, `forest_tau.png`) and formatted `*.txt` tables are written under `output/`.
@@ -59,7 +59,7 @@ Here “**scalar**” means each unit contributes **one number** $y_{\text{pre},
 
 Implementation sketch:
 
-1. Estimate a slope $\hat\theta$ from the pooled relationship between $y_{\text{post}}$ and $y_{\text{pre}}$ (here: $\mathrm{Cov}(y_{\text{post}}, y_{\text{pre}}) / \mathrm{Var}(y_{\text{pre}})$).
+1. Estimate a slope $\hat\theta$ from the pooled relationship between $y_{\text{post}}$ and $y_{\text{pre}}$ (here: $\text{Cov}(y_{\text{post}}, y_{\text{pre}}) / \text{Var}(y_{\text{pre}})$).
 2. Subtract $\hat\theta(y_{\text{pre}} - \mu)$ from $y_{\text{post}}$, then take the **difference in means** of the adjusted values between arms.
 
 The two variants differ only in **$\mu$** (centering of $y_{\text{pre}}$):
@@ -79,8 +79,7 @@ $$
 
 Per unit:
 $$
-y^{\text{adj}}_i
-= y_{\text{post},i} - \hat\theta_{w_i}\bigl(y_{\text{pre},i} - \mu_{\text{pre}}\bigr),
+y^{\text{adj}}_i = y_{\text{post},i} - \hat\theta_{w_i}\bigl(y_{\text{pre},i} - \mu_{\text{pre}}\bigr)
 $$
 and $\hat\tau$ is the difference in means of $y^{\text{adj}}$ between arms. When $\theta_T \neq \theta_C$, this differs from pooled scalar CUPED (one slope for both arms). Under a **single** pooled linear relationship it is close to scalar CUPED; with **small arms**, estimating two slopes can be a bit noisier than one pooled $\hat\theta$.
 
@@ -213,6 +212,6 @@ where $\rho = \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$.
 In the current run outputs (from `output/mc_draws.txt` / `output/rho_summary.txt`):
 
 - $\bar\rho \approx 0.684$ so $1 - \bar\rho^2 \approx 0.532$
-- empirical $\mathrm{Var}(\hat\tau_{\text{cuped\_one\_theta}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 0.520$
+- empirical $\mathrm{Var}(\hat\tau_{\text{cuped_one_theta}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 0.520$
 
 This is **close** but not an identity: finite-sample effects (including estimating $\theta$) and DGP nonlinearity mean the ATE variance ratio does not have to equal $1-\rho^2$ exactly.
