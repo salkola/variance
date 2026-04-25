@@ -16,7 +16,7 @@ Plots (`violin_ate_estimates.png`, `relative_variance.png`, `forest_tau.png`) an
 
 ## Goal and estimand
 
-We observe **post-period outcome** `y_post`, **binary treatment** `w` ∈ {0, 1} (`**w = 1`**: treated arm, `**w = 0`**: control arm; assigned at experiment start t=0), and (optionally) **pre-period outcome** `y_pre` and features `z`. Under **random assignment**, the ATE on `y_post` is
+We observe **post-period outcome** `y_post`, **binary treatment** `w` ∈ {0, 1} (**`w = 1`**: treated arm, **`w = 0`**: control arm; assigned at experiment start t=0), and (optionally) **pre-period outcome** `y_pre` and features `z`. Under **random assignment**, the ATE on `y_post` is
 
 $$
 \tau = \mathbb{E}[y_{\text{post}} \mid w{=}1] - \mathbb{E}[y_{\text{post}} \mid w{=}0].
@@ -28,16 +28,16 @@ Every estimator below is built to target **that same** $\tau$ in this RCT settin
 
 We write **outcomes with a period subscript** so “y” is not a single ambiguous symbol:
 
-- `**y_pre`**: pre-period (pre-experiment) outcome for each unit—what you would have measured before treatment starts (t < 0).
-- `**y_post`**: post-period outcome used for the experiment’s primary analysis and for $\tau$ (t $\ge$ 0).
+- **`y_pre`**: pre-period (pre-experiment) outcome for each unit—what you would have measured before treatment starts (t < 0).
+- **`y_post`**: post-period outcome used for the experiment’s primary analysis and for $\tau$ (t $\ge$ 0).
 
-`**z**`: vector of **unit-level features** (in the simulator: latent “context” after a fixed correlation transform—think campaign/audience/seasonality–like inputs). Some estimators adjust using `z` directly (`ancova_zx`, Double ML); CUPED-style rows use `y_pre` (and multivariate pre columns built from the same `z`).
+**`z`**: vector of **unit-level features** (in the simulator: latent “context” after a fixed correlation transform—think campaign/audience/seasonality–like inputs). Some estimators adjust using `z` directly (`ancova_zx`, Double ML); CUPED-style rows use `y_pre` (and multivariate pre columns built from the same `z`).
 
 **Noise (simulator only):** the synthetic DGP in `data/synthetic_ads.py` builds a shared nonlinear signal g(z), then adds **independent** mean-zero Gaussian shocks to pre and post:
 
-- `**eps_pre`**, `**eps_post`**: idiosyncratic noise in `y_pre` and `y_post` (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of `w`.
+- **`eps_pre`**, **`eps_post`**: idiosyncratic noise in `y_pre` and `y_post` (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of `w`.
 
-`**g(z)`**: deterministic part of both periods’ outcomes before noise; `**y_post`** also adds `**true_ate * w**`. Details and functional form live in `AdsRCTDGP` in code, not in the table.
+**`g(z)`**: deterministic part of both periods’ outcomes before noise; **`y_post`** also adds **`true_ate * w`**. Details and functional form live in `AdsRCTDGP` in code, not in the table.
 
 ---
 
@@ -108,8 +108,8 @@ $$
 
 but treats g(z) as **unknown** and learns it with machine learning, using **cross-fitting** so overfitting bias is controlled (`doubleml`).
 
-- `**dml_plr_gbdt`**: flexible **gradient boosting** for the outcome nuisance $g(z)$, with a **random forest** for $\mathbb{E}[w \mid z]$ (under RCT the latter is nearly flat, but the estimator is written generically).
-- `**dml_plr_lasso`**: both nuisances use `**LassoCV`**—a linear, sparse high-dimensional workhorse. It shines when g(z) is well approximated linearly; when g(z) is curved or interactive, GBDT-style learners often fit better and can yield sharper ATE estimates.
+- **`dml_plr_gbdt`**: flexible **gradient boosting** for the outcome nuisance $g(z)$, with a **random forest** for $\mathbb{E}[w \mid z]$ (under RCT the latter is nearly flat, but the estimator is written generically).
+- **`dml_plr_lasso`**: both nuisances use **`LassoCV`**—a linear, sparse high-dimensional workhorse. It shines when $g(z)$ is well approximated linearly; when $g(z)$ is curved or interactive, GBDT-style learners often fit better and can yield sharper ATE estimates.
 
 ---
 
@@ -129,8 +129,8 @@ Use $...$ for inline math and $$...$$ for display math. -->
 | **rmse**                 | $\sqrt{\\frac{1}{R}\sum_r (\hat\tau_r - \tau)^2}$: typical error magnitude; combines bias and noise. |
 | **var**                  | Sample variance of $\hat\tau_r$ across replications (sampling variance of the point estimate). |
 | **var_vs_naive**         | $\mathrm{Var}(\hat\tau) / \mathrm{Var}(\hat\tau_{\text{naive}})$. Values **below 1** mean that estimator’s $\hat\tau$ is **less dispersed** across runs than the naive difference in means—i.e. **variance reduction** in repeated sampling. |
-| `**tau_mean_{level}%`**  | Monte Carlo mean $\hat\tau$ with **bootstrap** percentile interval over MC rows (mean ± [lo, hi]). |
-| `**var_ratio_{level}%`** | Point `var_vs_naive` with **bootstrap** percentile interval for the ratio on each resample (mean ± [lo, hi]).                                                                                                                            |
+| **`tau_mean_{level}%`**  | Monte Carlo mean $\hat\tau$ with **bootstrap** percentile interval over MC rows (mean ± [lo, hi]). |
+| **`var_ratio_{level}%`** | Point `var_vs_naive` with **bootstrap** percentile interval for the ratio on each resample (mean ± [lo, hi]). |
 
 
 Sorting and magnitudes **change** if you change noise scales, n, the number of MC replications, or the DGP. Bootstrap columns quantify **Monte Carlo uncertainty** in the reported summaries, not uncertainty from a single field experiment.
