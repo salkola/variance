@@ -33,7 +33,7 @@ We write **outcomes with a period subscript** so “y” is not a single ambiguo
 
 **$z$**: vector of **unit-level features** (in the simulator: latent “context” after a fixed correlation transform—think campaign/audience/seasonality–like inputs). Some estimators adjust using $z$ directly (`ancova_zx`, Double ML); CUPED-style rows use $y_{\text{pre}}$ (and multivariate pre columns built from the same $z$).
 
-**Noise (simulator only):** the synthetic DGP in `data/synthetic_ads.py` builds a shared nonlinear signal $g(z)$, then adds **independent** mean-zero Gaussian shocks to pre and post:
+**Noise (simulator only):** the synthetic **data generating process (DGP)** in `data/synthetic_ads.py` builds a shared nonlinear signal $g(z)$, then adds **independent** mean-zero Gaussian shocks to pre and post:
 
 - **$\epsilon_\text{pre}$**, **$\epsilon_\text{post}$**: idiosyncratic noise in $y_{\text{pre}}$ and $y_{\text{post}}$ (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of $w$.
 
@@ -78,9 +78,11 @@ $$
 $$
 
 Per unit:
+
 $$
 y^{\text{adj}}_i = y_{\text{post},i} - \hat\theta_{w_i}\bigl(y_{\text{pre},i} - \mu_{\text{pre}}\bigr)
 $$
+
 and $\hat\tau$ is the difference in means of $y^{\text{adj}}$ between arms. When $\theta_T \neq \theta_C$, this differs from pooled scalar CUPED (one slope for both arms). Under a **single** pooled linear relationship it is close to scalar CUPED; with **small arms**, estimating two slopes can be a bit noisier than one pooled $\hat\theta$.
 
 ### Multivariate CUPED: `cuped_multi`
@@ -114,7 +116,7 @@ but treats $g(z)$ as **unknown** and learns it with machine learning, using **cr
 
 ## Monte Carlo summary
 
-`run_comparison.py` draws many **independent** synthetic datasets. For each replication it computes every $\hat\tau$ above and stores them in `output/mc_draws.txt`. `output/summary_table.txt` combines point summaries (bias, RMSE, variance, `var_vs_naive`) with **bootstrap percentile intervals** over Monte Carlo rows (`MC_BOOTSTRAP_B`, `MC_BOOTSTRAP_SEED`, `MC_CI_LEVEL` in `config.py`) for $\mathbb{E}[\hat\tau]$ and for the variance ratio. Rows are sorted by **`var`** (ascending). Figures: `violin_ate_estimates.png`, `relative_variance.png` (bars include bootstrap error bars), `forest_tau.png` (MC mean ATE with horizontal bootstrap intervals and a line at true $\tau$; **y-axis sorted by sampling variance**—lowest `var` / best variance reduction at the **top**, same ordering idea as the summary table).
+`run_comparison.py` draws many **independent** synthetic datasets. For each replication it computes every $\hat\tau$ above and stores them in `output/mc_draws.txt`. `output/summary_table.txt` combines point summaries (bias, RMSE, variance, `var_vs_naive`) with **90% bootstrap percentile intervals** over Monte Carlo rows (`MC_BOOTSTRAP_B`, `MC_BOOTSTRAP_SEED`, `MC_CI_LEVEL = 0.90` in `config.py`) for $\mathbb{E}[\hat\tau]$ and for the variance ratio. Rows are sorted by **`var`** (ascending). Figures: `violin_ate_estimates.png`, `relative_variance.png` (bars include bootstrap error bars), `forest_tau.png` (MC mean ATE with horizontal bootstrap intervals and a line at true $\tau$; **y-axis sorted by sampling variance**—lowest `var` / best variance reduction at the **top**, same ordering idea as the summary table).
 
 Let $\tau$ be the simulator’s true ATE (`DGP_TRUE_ATE`)—**constant across draws**—and let $\hat\tau_r$ be the **estimated** ATE from replication $r$ (one draw of data, one $\hat\tau$ per method). We do **not** use $\tau_r$: the estimand does not vary with $r$ in this setup.
 
@@ -128,8 +130,8 @@ Use $...$ for inline math and $$...$$ for display math. -->
 | **rmse**                 | $\sqrt{\frac{1}{R}\sum_r (\hat\tau_r - \tau)^2}$: typical error magnitude; combines bias and noise. |
 | **var**                  | Sample variance of $\hat\tau_r$ across replications (sampling variance of the point estimate). |
 | **var_vs_naive**         | $\mathrm{Var}(\hat\tau) / \mathrm{Var}(\hat\tau_{\text{naive}})$. Values **below 1** mean that estimator’s $\hat\tau$ is **less dispersed** across runs than the naive difference in means—i.e. **variance reduction** in repeated sampling. |
-| **`tau_mean_{level}%`**  | Monte Carlo mean $\hat\tau$ with **bootstrap** percentile interval over MC rows (mean ± [lo, hi]). |
-| **`var_ratio_{level}%`** | Point `var_vs_naive` with **bootstrap** percentile interval for the ratio on each resample (mean ± [lo, hi]). |
+| **`tau_mean_90%`**  | Monte Carlo mean $\hat\tau$ with **90% bootstrap** percentile interval over MC rows (mean ± [lo, hi]). |
+| **`var_ratio_90%`** | Point `var_vs_naive` with **90% bootstrap** percentile interval for the ratio on each resample (mean ± [lo, hi]). |
 
 
 Sorting and magnitudes **change** if you change noise scales, n, the number of MC replications, or the DGP. Bootstrap columns quantify **Monte Carlo uncertainty** in the reported summaries, not uncertainty from a single field experiment.
@@ -178,18 +180,20 @@ Interpretation:
 All figures are generated from the same MC draws and are ordered consistently by sampling variance.
 
 - **Relative variance vs naive** (`output/relative_variance.png`): bars show `Var(τ̂)/Var(naive)` with 90% bootstrap intervals.
+  - **Ordering**: methods run **left → right** by increasing sampling variance (same idea as the summary table); the dashed line at **1** is naive.
+  - **Takeaway**: **`dml_plr_gbdt`** and **`cuped_multi`** show the **largest** variance deflation; linear-on-$z$ methods sit only modestly below **1** (often ~**0.87–0.9×** naive in this run), with comparatively short bars but ratios still far from the best few.
 
 ![](output/relative_variance.png)
 
-
-
 - **Forest plot of MC mean ATE** (`output/forest_tau.png`): points show MC mean $\hat\tau$ with 90% bootstrap intervals; the dashed vertical line is the true ATE.
+  - **Precision**: **narrower** horizontal intervals at the **top** = lower `var` / more stable $\hat\tau$ across MC replications; **`naive`** is widest at the bottom.
+  - **Coverage**: in this snapshot, every interval **crosses** the true $\tau$ line—differences are mostly about **width** (efficiency), not obvious systematic miss.
 
 ![](output/forest_tau.png)
 
-
-
 - **Violin plot of ATE draws** (`output/violin_ate_estimates.png`): full distribution of $\hat\tau$ across replications; dashed horizontal line is the true ATE.
+  - **Spread**: violins get **wider** left → right as `var` increases; **`dml_plr_gbdt`** is the tightest cloud, **`naive`** the most dispersed.
+  - **Centering**: box medians sit **near** the true ATE for all methods here; the plot emphasizes **sampling noise** more than large bias.
 
 ![](output/violin_ate_estimates.png)
 
@@ -220,4 +224,4 @@ In the current run outputs (from `output/mc_draws.txt` / `output/rho_summary.txt
 - $\bar\rho \approx 0.684$ so $1 - \bar\rho^2 \approx 0.532$
 - empirical $\mathrm{Var}(\hat\tau_{\text{cuped}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 0.520$ for **`cuped_one_theta`**
 
-This is **close** but not an identity: finite-sample effects (including estimating $\theta$) and DGP nonlinearity mean the ATE variance ratio does not have to equal $1-\rho^2$ exactly.
+In practice the empirical variance ratio and $1-\rho^2$ are **approximately the same** here; **finite-sample** noise (including estimating $\theta$ from data each replication) and mild departures from a purely linear pre–post link can shift the ratio by a **small** amount that is not meaningfully different.
