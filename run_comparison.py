@@ -256,6 +256,7 @@ def plot_variance_bar(
     plt.xticks(x, [str(i) for i in idx], rotation=25, ha="right")
     plt.axhline(1.0, color="black", linestyle="--", linewidth=1, label="naive variance")
     plt.ylabel("Var(hat) / Var(naive)")
+    plt.ylim(0.0, 1.05)
     plt.title(f"Variance ratio vs naive ({pct}% bootstrap MC intervals)")
     plt.legend()
     plt.tight_layout()
@@ -286,7 +287,7 @@ def plot_forest_tau(
 
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.errorbar(means, y, xerr=xerr, fmt="o", color="steelblue", ecolor="black", capsize=4, markersize=5)
-    ax.axvline(truth, color="steelblue", linestyle="--", linewidth=0.5, label="true ATE")
+    ax.axvline(truth, color="red", linestyle="--", linewidth=0.5, label="true ATE")
     ax.set_yticks(y)
     ax.set_yticklabels(order, fontsize=14)
     ax.tick_params(axis="x", labelsize=14)
