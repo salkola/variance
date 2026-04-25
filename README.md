@@ -35,7 +35,7 @@ We write **outcomes with a period subscript** so “y” is not a single ambiguo
 
 **Noise (simulator only):** the synthetic DGP in `data/synthetic_ads.py` builds a shared nonlinear signal $g(z)$, then adds **independent** mean-zero Gaussian shocks to pre and post:
 
-- **$\eps_\text{pre}$**, **$\eps_\text{post}$**: idiosyncratic noise in $y_{\text{pre}}$ and $y_{\text{post}}$ (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of $w$.
+- **$\epsilon_\text{pre}$**, **$\epsilon_\text{post}$**: idiosyncratic noise in $y_{\text{pre}}$ and $y_{\text{post}}$ (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of $w$.
 
 **$g(z)$**: deterministic part of both periods’ outcomes before noise; $y_{\text{post}}$ also adds **`true_ate * w`**. Details and functional form live in `AdsRCTDGP` in code, not in the table.
 
@@ -59,7 +59,7 @@ Here “**scalar**” means each unit contributes **one number** $y_{\text{pre},
 
 Implementation sketch:
 
-1. Estimate a slope $\hat\theta$ from the pooled relationship between $y_{\text{post}}$ and $y_{\text{pre}}$: $\text{Cov}(y_{\text{post}}, y_{\text{pre}}) / \text{Var}(y_{\text{pre}})$.
+1. Estimate a slope $\hat\theta$ from the pooled relationship between $y_{\text{post}}$ and $y_{\text{pre}}$: $\hat\theta = \text{Cov}(y_{\text{post}}, y_{\text{pre}}) / \text{Var}(y_{\text{pre}})$.
 2. Subtract $\hat\theta(y_{\text{pre}} - \mu)$ from $y_{\text{post}}$, then take the **difference in means** of the adjusted values between arms.
 
 The two variants differ only in **$\mu$** (centering of $y_{\text{pre}}$):
@@ -212,6 +212,6 @@ where $\rho = \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$.
 In the current run outputs (from `output/mc_draws.txt` / `output/rho_summary.txt`):
 
 - $\bar\rho \approx 0.684$ so $1 - \bar\rho^2 \approx 0.532$
-- empirical $\text{Var}(\hat\tau_{\text{cuped\_one\_theta}}) / \text{Var}(\hat\tau_{\text{naive}}) \approx 0.520$
+- empirical $\mathrm{Var}(\hat\tau_{\text{cuped}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 0.520$ for **`cuped_one_theta`**
 
 This is **close** but not an identity: finite-sample effects (including estimating $\theta$) and DGP nonlinearity mean the ATE variance ratio does not have to equal $1-\rho^2$ exactly.
