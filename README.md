@@ -10,7 +10,7 @@ Run:
 python3 run_comparison.py
 ```
 
-Plots (`violin_ate_estimates.png`, `relative_variance.png`, `forest_tau.png`) and formatted `*.txt` tables are written under `output/`.
+Plots and formatted tables are written under `output/`.
 
 ---
 
@@ -78,18 +78,18 @@ Under random assignment, $\mathbb{E}[\bar y_{\text{pre},T}-\bar y_{\text{pre},C}
 Let $X_i=y_{\text{pre},i}-\mu$ and $Y_i=y_{\text{post},i}$. The adjusted outcome is $Y_i-\theta X_i$. Its variance is
 
 $$
-\operatorname{Var}(Y-\theta X)=\operatorname{Var}(Y)-2\theta\,\operatorname{Cov}(Y,X)+\theta^2\operatorname{Var}(X).
+\text{Var}(Y-\theta X)=\text{Var}(Y)-2\theta\,\text{Cov}(Y,X)+\theta^2\text{Var}(X).
 $$
 
 This quadratic is minimized at
 
 $$
-\theta^\star=\frac{\operatorname{Cov}(Y,X)}{\operatorname{Var}(X)}=\frac{\operatorname{Cov}(y_{\text{post}},y_{\text{pre}})}{\operatorname{Var}(y_{\text{pre}})},
+\theta^\star=\frac{\text{Cov}(Y,X)}{\text{Var}(X)}=\frac{\text{Cov}(y_{\text{post}},y_{\text{pre}})}{\text{Var}(y_{\text{pre}})},
 $$
 
 which is the pooled OLS slope of $y_{\text{post}}$ on $y_{\text{pre}}$ (centering by $\mu$ does not change the slope). In practice, we plug in the sample analogue $\hat\theta$ computed on the pooled data, form $y^{\text{adj}}$, and then take a standard difference in means.
 
-#### Intuition (one RCT and confidence intervals)
+#### Intuition
 
 For a single realized RCT dataset, it is helpful to rewrite CUPED directly in terms of the **naive point estimate** and the **observed pre-period shift** between arms. Throughout this section, a **contrast** is a **between-arm difference in sample means** for a named outcome (e.g. $\bar y_{\text{post},T}-\bar y_{\text{post},C}$ for post, or $\Delta_{\text{pre}}$ for pre). Let
 
