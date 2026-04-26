@@ -112,8 +112,11 @@ def estimate_ate_cuped(
         return CupedResult(ate_hat=ate, se_delta=se, theta=theta)
 
     if mode == "cuped_two_theta":
-        # Arm-specific pre→post slopes θ_T, θ_C; common pre reference μ_pre
-        # mu_pre = (mean_pre_T + mean_pre_C) / 2; same as pooled y_pre mean when n_T ≈ n_C.
+        # Arm-specific pre→post slopes θ_T, θ_C; common centering μ_pre.
+        #
+        # Important: if you center within each arm (μ_T = mean_pre_T, μ_C = mean_pre_C),
+        # then the adjusted within-arm means equal the original within-arm means exactly,
+        # so the ATE point estimate becomes identical to naive for every dataset (no variance reduction).
         if pre.shape[1] != 1:
             raise ValueError("cuped_two_theta expects a scalar pre-period outcome.")
         x0 = pre[:, 0]
@@ -126,7 +129,7 @@ def estimate_ate_cuped(
             raise ValueError("cuped_two_theta needs positive within-arm variance of y_pre.")
         theta_t = float(np.cov(y[w1], x0[w1], ddof=1)[0, 1] / v1)
         theta_c = float(np.cov(y[w0], x0[w0], ddof=1)[0, 1] / v0)
-        mu_pre = 0.5 * (float(x0[w1].mean()) + float(x0[w0].mean()))
+        mu_pre = float(x0.mean())
         y_adj = np.empty_like(y)
         y_adj[w1] = y[w1] - theta_t * (x0[w1] - mu_pre)
         y_adj[w0] = y[w0] - theta_c * (x0[w0] - mu_pre)

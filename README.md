@@ -53,14 +53,63 @@ Uses only $y_{\text{post}}$ and $w$. This is the **reference**: easy to interpre
 
 ### CUPED (scalar $y_{\text{pre}}$): `cuped_known_pre_mean` and `cuped_one_theta`
 
-**CUPED** (Controlled-experiment Using Pre-Experiment Data) uses a pre-period outcome that is **correlated** with $y_{\text{post}}$ to re-express the analysis in terms of an adjusted post outcome whose treatment contrast has lower variance.
+**CUPED** (Controlled-experiment Using Pre-Experiment Data) uses a pre-period outcome that is **correlated** with $y_{\text{post}}$ to re-express the analysis in terms of an adjusted post outcome whose **treatment contrast**—the **difference in mean** $y_{\text{post}}$ between arms—has lower variance.
 
 Here “**scalar**” means each unit contributes **one number** $y_{\text{pre},i}$ (a single pre-period metric), rather than a vector of multiple pre metrics.
 
-Implementation sketch:
+#### ATE
 
-1. Estimate a slope $\hat\theta$ from the pooled relationship between $y_{\text{post}}$ and $y_{\text{pre}}$: $\hat\theta = \text{Cov}(y_{\text{post}}, y_{\text{pre}}) / \text{Var}(y_{\text{pre}})$.
-2. Subtract $\hat\theta(y_{\text{pre}} - \mu)$ from $y_{\text{post}}$, then take the **difference in means** of the adjusted values between arms.
+Define an adjusted outcome:
+
+$$
+y^{\text{adj}}_i(\theta,\mu)=y_{\text{post},i}-\theta\bigl(y_{\text{pre},i}-\mu\bigr),
+$$
+
+and estimate ATE by a plain difference in means on $y^{\text{adj}}$:
+
+$$
+\hat\tau_{\text{cuped}}(\theta,\mu)=\overline{y^{\text{adj}}}_T-\overline{y^{\text{adj}}}_C.
+$$
+
+Under random assignment, $\mathbb{E}[\bar y_{\text{pre},T}-\bar y_{\text{pre},C}]=0$, so $\hat\tau_{\text{cuped}}(\theta,\mu)$ targets the same $\tau$ as $\hat\tau_{\text{naive}}$ for any fixed $(\theta,\mu)$. The whole point of CUPED is choosing $\theta$ to **minimize variance**.
+
+#### Slope
+
+Let $X_i=y_{\text{pre},i}-\mu$ and $Y_i=y_{\text{post},i}$. The adjusted outcome is $Y_i-\theta X_i$. Its variance is
+
+$$
+\operatorname{Var}(Y-\theta X)=\operatorname{Var}(Y)-2\theta\,\operatorname{Cov}(Y,X)+\theta^2\operatorname{Var}(X).
+$$
+
+This quadratic is minimized at
+
+$$
+\theta^\star=\frac{\operatorname{Cov}(Y,X)}{\operatorname{Var}(X)}=\frac{\operatorname{Cov}(y_{\text{post}},y_{\text{pre}})}{\operatorname{Var}(y_{\text{pre}})},
+$$
+
+which is the pooled OLS slope of $y_{\text{post}}$ on $y_{\text{pre}}$ (centering by $\mu$ does not change the slope). In practice, we plug in the sample analogue $\hat\theta$ computed on the pooled data, form $y^{\text{adj}}$, and then take a standard difference in means.
+
+#### Intuition (one RCT and confidence intervals)
+
+For a single realized RCT dataset, it is helpful to rewrite CUPED directly in terms of the **naive point estimate** and the **observed pre-period shift** between arms. Throughout this section, a **contrast** is a **between-arm difference in sample means** for a named outcome (e.g. $\bar y_{\text{post},T}-\bar y_{\text{post},C}$ for post, or $\Delta_{\text{pre}}$ for pre). Let
+
+$$
+\Delta_{\text{pre}}=\bar y_{\text{pre},T}-\bar y_{\text{pre},C}.
+$$
+
+With a common reference $\mu$ (pooled mean or a known population mean), the CUPED estimate can be written as
+
+$$
+\hat\tau_{\text{cuped}}=\hat\tau_{\text{naive}}-\hat\theta\,\Delta_{\text{pre}}.
+$$
+
+Interpretation:
+
+- Under randomization, $\mathbb{E}[\Delta_{\text{pre}}]=0$, but in any **finite** sample $\Delta_{\text{pre}}$ is typically **nonzero** because treatment and control groups differ slightly in baseline composition.
+- The naive ATE is driven by **between-arm mean differences** in $y_{\text{post}}$. Part of the sampling variability in that between-arm contrast is tied to the same finite-sample imbalance in **between-arm** pre means, $\Delta_{\text{pre}}$. When $y_{\text{pre}}$ is correlated with $y_{\text{post}}$, the between-arm post contrast and $\Delta_{\text{pre}}$ **covary** across repeated experiments. Subtracting $\hat\theta\Delta_{\text{pre}}$ removes part of the sampling noise in the naive contrast. Under random assignment, it does not change the estimand: the average treatment effect (ATE) on $y_{\text{post}}$.
+- **Single sample (one run).** If, by chance, the treated group has a higher pre mean ($\Delta_{\text{pre}}>0$) and pre predicts post ($\hat\theta>0$), then part of the naive post-period contrast $\hat\tau_{\text{naive}}$ is **attributable to baseline composition**, not the treatment. The term $-\hat\theta\,\Delta_{\text{pre}}$ subtracts that component so the adjusted estimate is closer to the contrast you would expect if pre means were **perfectly balanced** in that draw. If $\Delta_{\text{pre}}\approx 0$, there is little imbalance to remove and CUPED is close to naive.
+- **Repeated sampling.** Over hypothetical replications of the experiment, the variance of $\hat\tau$ is smaller than that of $\hat\tau_{\text{naive}}$ when the adjustment successfully removes the **covarying** part of sampling noise. In a **single** realized trial you obtain one CUPED point estimate; its **standard error** and **confidence interval** are then typically **narrower** than for naive, because the sampling distribution of $\hat\tau$ is tighter (analytically, or from a **unit-level** bootstrap that resamples entities and recomputes $\hat\theta$ each resample).
+- If $\Delta_{\text{pre}}=0$ in a particular draw, the adjustment term is zero and CUPED coincides with naive for that draw; the variance gain is a **repeated-sampling** property, not a guarantee in every single finite sample.
 
 The two variants differ only in **$\mu$** (centering of $y_{\text{pre}}$):
 
@@ -71,10 +120,10 @@ When $\mu$ is well specified and $n$ is large, these often behave almost the sam
 
 ### Arm-specific θ (two θ’s): `cuped_two_theta`
 
-Instead of one pooled slope $\hat\theta$, estimate **separate** pre→post slopes within each arm, $\hat\theta_T$ and $\hat\theta_C$, then compare arms after adjusting each unit’s $y_{\text{post}}$ with its arm’s slope and a **common** pre reference
+Instead of one pooled slope $\hat\theta$, estimate **separate** pre→post slopes within each arm, $\hat\theta_T$ and $\hat\theta_C$, then compare arms after adjusting each unit’s $y_{\text{post}}$ with its arm’s slope and a **common** pre reference.
 
 $$
-\mu_{\text{pre}} = \frac{\bar y_{\text{pre},T} + \bar y_{\text{pre},C}}{2}.
+\mu_{\text{pre}} = \bar y_{\text{pre}}.
 $$
 
 Per unit:
@@ -83,7 +132,7 @@ $$
 y^{\text{adj}}_i = y_{\text{post},i} - \hat\theta_{w_i}\bigl(y_{\text{pre},i} - \mu_{\text{pre}}\bigr)
 $$
 
-and $\hat\tau$ is the difference in means of $y^{\text{adj}}$ between arms. When $\theta_T \neq \theta_C$, this differs from pooled scalar CUPED (one slope for both arms). Under a **single** pooled linear relationship it is close to scalar CUPED; with **small arms**, estimating two slopes can be a bit noisier than one pooled $\hat\theta$.
+and $\hat\tau$ is the difference in means of $y^{\text{adj}}$ between arms. When $\theta_T \neq \theta_C$, this differs from pooled scalar CUPED (one slope for both arms). With finite arms, estimating two slopes can be a bit noisier than one pooled $\hat\theta$.
 
 ### Multivariate CUPED: `cuped_multi`
 
@@ -142,7 +191,7 @@ For the strength of pre/post alignment in a given run batch, see **`output/rho_s
 
 ## Simulation results
 
-This section summarizes the latest Monte Carlo outputs written under `output/` by `python run_comparison.py`.
+This section summarizes the latest Monte Carlo outputs written under `output/` by `python3 run_comparison.py` (see top of this file).
 
 ### Setup and pre/post linkage
 
@@ -159,11 +208,11 @@ Rows in `output/summary_table.txt` are sorted by **sampling variance** `var` (as
 
 | Method               | bias     | rmse        | var         | var_vs_naive |
 | -------------------- | -------- | ----------- | ----------- | ------------ |
-| **dml_plr_gbdt**     | −0.00192 | **0.01334** | **0.00018** | **0.32764**  |
+| **dml_plr_gbdt**     | −0.00191 | **0.01334** | **0.00018** | **0.32776**  |
 | **cuped_multi**      | −0.00074 | 0.01370     | 0.00019     | 0.35215      |
 | cuped_known_pre_mean | −0.00091 | 0.01665     | 0.00028     | 0.52011      |
 | cuped_one_theta      | −0.00091 | 0.01665     | 0.00028     | 0.52011      |
-| cuped_two_theta      | −0.00088 | 0.01666     | 0.00028     | 0.52058      |
+| cuped_two_theta      | −0.00088 | 0.01666     | 0.00028     | 0.52061      |
 | ancova_zx            | −0.00128 | 0.02155     | 0.00047     | 0.87074      |
 | dml_plr_lasso        | −0.00130 | 0.02174     | 0.00048     | 0.88613      |
 | **naive**            | −0.00084 | **0.02307** | 0.00054     | 1.00000      |
