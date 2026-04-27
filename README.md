@@ -78,7 +78,7 @@ Under random assignment, $\mathbb{E}[\bar y_{\text{pre},T}-\bar y_{\text{pre},C}
 Let $X_i=y_{\text{pre},i}-\mu$ and $Y_i=y_{\text{post},i}$. The adjusted outcome is $Y_i-\theta X_i$. Its variance is
 
 $$
-\text{Var}(Y-\theta X)=\text{Var}(Y)-2\theta\,\text{Cov}(Y,X)+\theta^2\text{Var}(X).
+\text{Var}(Y-\theta X)=\text{Var}(Y)-2\theta \cdot\text{Cov}(Y,X)+\theta^2\text{Var}(X).
 $$
 
 This quadratic is minimized at
@@ -100,14 +100,14 @@ $$
 With a common reference $\mu$ (pooled mean or a known population mean), the CUPED estimate can be written as
 
 $$
-\hat\tau_{\text{cuped}}=\hat\tau_{\text{naive}}-\hat\theta\,\Delta_{\text{pre}}.
+\hat\tau_{\text{cuped}}=\hat\tau_{\text{naive}}-\hat\theta \cdot \Delta_{\text{pre}}.
 $$
 
 Interpretation:
 
 - Under randomization, $\mathbb{E}[\Delta_{\text{pre}}]=0$, but in any **finite** sample $\Delta_{\text{pre}}$ is typically **nonzero** because treatment and control groups differ slightly in baseline composition.
 - The naive ATE is driven by **between-arm mean differences** in $y_{\text{post}}$. Part of the sampling variability in that between-arm contrast is tied to the same finite-sample imbalance in **between-arm** pre means, $\Delta_{\text{pre}}$. When $y_{\text{pre}}$ is correlated with $y_{\text{post}}$, the between-arm post contrast and $\Delta_{\text{pre}}$ **covary** across repeated experiments. Subtracting $\hat\theta\Delta_{\text{pre}}$ removes part of the sampling noise in the naive contrast. Under random assignment, it does not change the estimand: the average treatment effect (ATE) on $y_{\text{post}}$.
-- **Single sample (one run).** If, by chance, the treated group has a higher pre mean ($\Delta_{\text{pre}}>0$) and pre predicts post ($\hat\theta>0$), then part of the naive post-period contrast $\hat\tau_{\text{naive}}$ is **attributable to baseline composition**, not the treatment. The term $-\hat\theta\,\Delta_{\text{pre}}$ subtracts that component so the adjusted estimate is closer to the contrast you would expect if pre means were **perfectly balanced** in that draw. If $\Delta_{\text{pre}}\approx 0$, there is little imbalance to remove and CUPED is close to naive.
+- **Single sample (one run).** If, by chance, the treated group has a higher pre mean ($\Delta_{\text{pre}}>0$) and pre predicts post ($\hat\theta>0$), then part of the naive post-period contrast $\hat\tau_{\text{naive}}$ is **attributable to baseline composition**, not the treatment. The term $-\hat\theta \cdot \Delta_{\text{pre}}$ subtracts that component so the adjusted estimate is closer to the contrast you would expect if pre means were **perfectly balanced** in that draw. If $\Delta_{\text{pre}}\approx 0$, there is little imbalance to remove and CUPED is close to naive.
 - **Repeated sampling.** Over hypothetical replications of the experiment, the variance of $\hat\tau$ is smaller than that of $\hat\tau_{\text{naive}}$ when the adjustment successfully removes the **covarying** part of sampling noise. In a **single** realized trial you obtain one CUPED point estimate; its **standard error** and **confidence interval** are then typically **narrower** than for naive, because the sampling distribution of $\hat\tau$ is tighter (analytically, or from a **unit-level** bootstrap that resamples entities and recomputes $\hat\theta$ each resample).
 - If $\Delta_{\text{pre}}=0$ in a particular draw, the adjustment term is zero and CUPED coincides with naive for that draw; the variance gain is a **repeated-sampling** property, not a guarantee in every single finite sample.
 
