@@ -12,7 +12,6 @@ python3 run_comparison.py
 
 Plots and formatted tables are written under `output/`.
 
----
 
 ## Goal and estimand
 
@@ -39,7 +38,6 @@ We write **outcomes with a period subscript** so “y” is not a single ambiguo
 
 **$g(z)$**: deterministic part of both periods’ outcomes before noise; $y_{\text{post}}$ also adds **`true_ate * w`**. Details and functional form live in `AdsRCTDGP` in code, not in the table.
 
----
 
 ## Estimators
 
@@ -161,7 +159,6 @@ but treats $g(z)$ as **unknown** and learns it with machine learning, using **cr
 - **`dml_plr_gbdt`**: flexible **gradient boosting** for the outcome nuisance $g(z)$, with a **random forest** for $\mathbb{E}[w \mid z]$ (under RCT the latter is nearly flat, but the estimator is written generically).
 - **`dml_plr_lasso`**: both nuisances use **`LassoCV`**—a linear, sparse high-dimensional workhorse. It shines when $g(z)$ is well approximated linearly; when $g(z)$ is curved or interactive, GBDT-style learners often fit better and can yield sharper ATE estimates.
 
----
 
 ## Monte Carlo summary
 
@@ -187,7 +184,6 @@ Sorting and magnitudes **change** if you change noise scales, n, the number of M
 
 For the strength of pre/post alignment in a given run batch, see **`output/rho_summary.txt`**: $\rho \approx \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$ per draw, then summarized.
 
----
 
 ## Simulation results
 
@@ -256,7 +252,6 @@ All figures are generated from the same MC draws and are ordered consistently by
 
 These rankings can change with `config.py` (sample size, noise scales, DGP details, number of MC replications).
 
----
 
 ## Sanity check: scalar CUPED and $1 - \rho^2$
 
