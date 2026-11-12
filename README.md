@@ -155,7 +155,7 @@ Every estimator below targets the same $\tau$. They differ in which pre-treatmen
 
 ## Simulation run
 
-Settings: 10,000 units per experiment, 200 independent experiments, true average $\tau = 0.08$, with a nonlinear unit-level deviation $\tau(z)$ around that average. Across experiments, $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$ has mean $0.695$ (standard deviation $0.006$). Then $1-\bar\rho^2 \approx 0.517$. Scalar CUPED lands at $0.488$, close to that benchmark.
+Settings: 10,000 units per experiment, 200 independent experiments, true average $\tau = 0.08$, with a nonlinear unit-level deviation $\tau(z)$ around that average. Across experiments, $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$ has mean $0.695$ (standard deviation $0.006$). Then $1-\bar\rho^2 \simeq 0.517$. Scalar CUPED lands at $0.488$, close to that benchmark.
 
 Rows are ordered by sampling variance of $\hat\tau$, smallest first. Let $\hat\tau_i$ be the estimate from experiment $i$, let $N = 200$ be the number of experiments, and let $\tau = 0.08$.
 
@@ -163,6 +163,8 @@ Rows are ordered by sampling variance of $\hat\tau$, smallest first. Let $\hat\t
 - **rmse** is $\sqrt{\frac{1}{N}\sum_{i=1}^{N}(\hat\tau_i - \tau)^2}$: the typical size of the error in one experiment.
 - **var** is the sample variance of the 200 estimates. It measures how much $\hat\tau$ moves from one experiment to the next.
 - **var_vs_naive** is that variance divided by the naive variance. Values below 1 are variance reduction.
+
+When the bias is tiny, as it is in this table, $\mathrm{rmse} \simeq \sqrt{\mathrm{var}}$. The variance is the square of that typical error, which is why its numeric value is much smaller.
 
 The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the Monte Carlo summaries. They describe uncertainty from using 200 experiments, not the confidence interval of one field experiment.
 
@@ -190,7 +192,7 @@ The full set of $\hat\tau$ draws. The red line is the true ATE. Spread grows fro
 ## Takeaways
 
 - Bias is small next to RMSE for every method, so the error is sampling noise.
-- With $\rho \approx 0.695$, scalar CUPED cuts the variance about in half, close to $1-\rho^2$. `cuped_multi` goes further, to **0.340×** the naive variance, because the extra pre-period columns carry information a single $y_{\mathrm{pre}}$ misses.
+- With $\rho \simeq 0.695$, scalar CUPED cuts the variance about in half, close to $1-\rho^2$. `cuped_multi` goes further, to **0.340×** the naive variance, because the extra pre-period columns carry information a single $y_{\mathrm{pre}}$ misses.
 - `mlrate` is the most precise here, at **0.281×** naive. It predicts $y_{\mathrm{post}}$ from $y_{\mathrm{pre}}$ and $z$, then lets that adjustment differ by arm.
 - ANCOVA, including the treatment interaction, reaches only **0.896×** naive. Most of $\tau(z)$ and nearly all of $\mu(z)$ are nonlinear in $z$, so the extra slope removes almost no residual variance.
 - Separate slopes on $y_{\mathrm{pre}}$ (`cuped_two_theta`) match the single slope. The pre-period outcome does not contain $\tau(z)$, so a second pre-period slope has nothing extra to fit.
