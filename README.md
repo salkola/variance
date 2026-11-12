@@ -170,12 +170,12 @@ The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the 
 
 | Method | bias | rmse | var | var_vs_naive |
 | --- | --- | --- | --- | --- |
-| **mlrate** | 0.00009 | **0.00744** | **0.00006** | **0.281** |
-| **cuped_multi** | 0.00052 | 0.00820 | 0.00007 | 0.340 |
-| cuped_two_theta | −0.00010 | 0.00981 | 0.00010 | 0.488 |
-| cuped_one_theta | −0.00011 | 0.00981 | 0.00010 | 0.488 |
-| ancova | 0.00031 | 0.01330 | 0.00018 | 0.896 |
-| **naive** | 0.00034 | **0.01405** | 0.00020 | 1.000 |
+| **mlrate** | 0.000089 | **0.00744** | **0.000056** | **0.281** |
+| **cuped_multi** | 0.000521 | 0.00820 | 0.000067 | 0.340 |
+| cuped_two_theta | −0.000095 | 0.00981 | 0.000097 | 0.488 |
+| cuped_one_theta | −0.000111 | 0.00981 | 0.000097 | 0.488 |
+| ancova | 0.000311 | 0.01330 | 0.000178 | 0.896 |
+| **naive** | 0.000338 | **0.01405** | 0.000198 | 1.000 |
 
 Relative variance, lowest on the left. The dashed line is the naive estimator.
 

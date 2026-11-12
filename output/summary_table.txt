@@ -1,9 +1,9 @@
-Monte Carlo summary + 90% bootstrap CIs over MC rows (B=2000, seed=0). true ATE tau = 0.08, pre-period mean anchor = 1.0. Numeric columns from MC draws; last two columns are mean ± [lo, hi] (4 dp).
+Monte Carlo summary + 90% bootstrap CIs over MC rows (B=2000, seed=0). true ATE tau = 0.08, pre-period mean anchor = 1.0. bias and var to 6 dp; rmse and var_vs_naive to 5 dp; last two columns are mean ± [lo, hi] (4 dp).
 
-                    bias     rmse      var  var_vs_naive               tau_mean_90%              var_ratio_90%
-mlrate           0.00009  0.00744  0.00006       0.28056  0.0801 ± [0.0792, 0.0809]  0.2806 ± [0.2346, 0.3430]
-cuped_multi      0.00052  0.00820  0.00007       0.33959  0.0805 ± [0.0795, 0.0814]  0.3396 ± [0.2859, 0.4068]
-cuped_two_theta -0.00009  0.00981  0.00010       0.48784  0.0799 ± [0.0788, 0.0811]  0.4878 ± [0.4134, 0.5813]
-cuped_one_theta -0.00011  0.00981  0.00010       0.48790  0.0799 ± [0.0787, 0.0810]  0.4879 ± [0.4134, 0.5813]
-ancova           0.00031  0.01330  0.00018       0.89598  0.0803 ± [0.0788, 0.0819]  0.8960 ± [0.8458, 0.9518]
-naive            0.00034  0.01405  0.00020       1.00000  0.0803 ± [0.0787, 0.0820]  1.0000 ± [1.0000, 1.0000]
+                     bias     rmse       var  var_vs_naive               tau_mean_90%              var_ratio_90%
+mlrate           0.000089  0.00744  0.000056       0.28056  0.0801 ± [0.0792, 0.0809]  0.2806 ± [0.2346, 0.3430]
+cuped_multi      0.000521  0.00820  0.000067       0.33959  0.0805 ± [0.0795, 0.0814]  0.3396 ± [0.2859, 0.4068]
+cuped_two_theta -0.000095  0.00981  0.000097       0.48784  0.0799 ± [0.0788, 0.0811]  0.4878 ± [0.4134, 0.5813]
+cuped_one_theta -0.000111  0.00981  0.000097       0.48790  0.0799 ± [0.0787, 0.0810]  0.4879 ± [0.4134, 0.5813]
+ancova           0.000311  0.01330  0.000178       0.89598  0.0803 ± [0.0788, 0.0819]  0.8960 ± [0.8458, 0.9518]
+naive            0.000338  0.01405  0.000198       1.00000  0.0803 ± [0.0787, 0.0820]  1.0000 ± [1.0000, 1.0000]

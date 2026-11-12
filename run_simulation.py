@@ -48,13 +48,15 @@ def _write_formatted_table(
     *,
     title: str | None = None,
     decimals: int = 6,
+    column_decimals: dict[str, int] | None = None,
     index: bool = True,
 ) -> None:
     """Write a fixed-width, human-readable table (UTF-8 text)."""
     out = df.copy()
     num_cols = out.select_dtypes(include=[np.number]).columns
-    if len(num_cols) > 0:
-        out[num_cols] = out[num_cols].round(decimals)
+    places = column_decimals or {}
+    for col in num_cols:
+        out[col] = out[col].round(places.get(col, decimals))
     body = out.to_string(index=index)
     parts = [title, "", body] if title else [body]
     path.write_text("\n".join(parts) + "\n", encoding="utf-8")
@@ -354,9 +356,11 @@ def main() -> None:
         title=(
             f"Monte Carlo summary + {pct}% bootstrap CIs over MC rows (B={MC_BOOTSTRAP_B}, seed={MC_BOOTSTRAP_SEED}). "
             f"true ATE tau = {DGP_TRUE_ATE}, pre-period mean anchor = {DGP_PRE_MEAN_TARGET}. "
-            f"Numeric columns from MC draws; last two columns are mean ± [lo, hi] (4 dp)."
+            f"bias and var to 6 dp; rmse and var_vs_naive to 5 dp; "
+            f"last two columns are mean ± [lo, hi] (4 dp)."
         ),
         decimals=5,
+        column_decimals={"bias": 6, "var": 6},
     )
     print(
         f"\n=== Summary (true ATE = {DGP_TRUE_ATE}, pre-period scalar mean anchored at {DGP_PRE_MEAN_TARGET}) ===\n"
