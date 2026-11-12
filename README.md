@@ -23,9 +23,9 @@ $$
 In the simulator both periods share a nonlinear baseline $\mu(z)$. Independent noise is added to each period, and the post-period outcome adds a unit-level effect $\tau(z)w$ whose sample average is $\tau$:
 
 $$
-y_{\mathrm{pre}} = \mu(z) + \varepsilon_{\mathrm{pre}},
+y_{\mathrm{pre}} = \mu(z) + \epsilon_{\mathrm{pre}},
 \qquad
-y_{\mathrm{post}} = \tau(z) w + \mu(z) + \varepsilon_{\mathrm{post}}.
+y_{\mathrm{post}} = \tau(z) w + \mu(z) + \epsilon_{\mathrm{post}}.
 $$
 
 Because $\mu(z)$ is shared, $y_{\mathrm{pre}}$ is correlated with $y_{\mathrm{post}}$, and $y_{\mathrm{pre}}$ does not contain $\tau(z)$. Because $\mu(z)$ and $\tau(z)$ are nonlinear, a straight line in $z$ leaves structure behind.
@@ -106,7 +106,7 @@ in every dataset, for any slope. The variance is then the naive variance. Standa
 Analysis of covariance (ANCOVA) regresses the post-period outcome on treatment, the centered features, and their interaction:
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta^\top (z - \bar z) + w \bigl(\gamma^\top (z - \bar z)\bigr) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top (z - \bar z) + w \bigl(\gamma^\top (z - \bar z)\bigr) + \epsilon.
 $$
 
 $\hat\tau$ is the coefficient on $w$. Centering keeps that coefficient equal to the average treatment effect. $\gamma$ lets the slope on $z$ differ by arm. If the conditional mean is nonlinear in $z$, this linear model leaves residual structure behind.
@@ -118,7 +118,7 @@ The machine learning regression-adjusted treatment effect estimator (MLRATE; Guo
 The starting point is Lin's interacted regression (Lin, 2013) on the pre-treatment covariates $x = (y_{\mathrm{pre}}, z)$:
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta^\top x + w (\gamma^\top x) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top x + w (\gamma^\top x) + \epsilon.
 $$
 
 When $x$ is centered, the coefficient on $w$ is the average treatment effect. A linear equation in $x$ cannot follow a nonlinear relationship, or interactions among the covariates, so a straight line leaves predictable variation behind.
@@ -134,7 +134,7 @@ The function $g$ is that fit of the observed $y_{\mathrm{post}}$. Treatment is n
 The prediction is cross-fit. The sample is split into folds. Each unit's $\hat y$ comes from a model trained on the other folds, so the prediction is not fit to the same outcome noise used to estimate $\tau$. Center $\hat y$ and fit
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta (\hat y - \bar{\hat y}) + \gamma  w (\hat y - \bar{\hat y}) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta (\hat y - \bar{\hat y}) + \gamma  w (\hat y - \bar{\hat y}) + \epsilon.
 $$
 
 $\hat\tau$ is the coefficient on $w$. Because $\hat y - \bar{\hat y}$ has mean zero, the interaction averages out and that coefficient is the average treatment effect. The interaction lets the adjustment differ by arm when $\tau(z)$ varies.
