@@ -14,7 +14,7 @@ Tables and figures are written to `output/`. The numbers in this README come fro
 
 ## What is being estimated
 
-Each unit has a post-period outcome $y_{\mathrm{post}}$, a binary treatment $w \in \{0,1\}$, a pre-period outcome $y_{\mathrm{pre}}$, and features $z$. Treatment is assigned by an independent coin flip, so it is independent of $y_{\mathrm{pre}}$ and $z$. The ATE on the post-period outcome is
+Each unit has a post-period outcome $y_{\mathrm{post}}$, a binary treatment $w \in {0,1}$, a pre-period outcome $y_{\mathrm{pre}}$, and features $z$. Treatment is assigned by an independent coin flip, so it is independent of $y_{\mathrm{pre}}$ and $z$. The ATE on the post-period outcome is
 
 $$
 \tau = \mathbb{E}[y_{\mathrm{post}} \mid w{=}1] - \mathbb{E}[y_{\mathrm{post}} \mid w{=}0].
@@ -25,7 +25,7 @@ In the simulator both periods share a nonlinear baseline $\mu(z)$. Independent n
 $$
 y_{\mathrm{pre}} = \mu(z) + \varepsilon_{\mathrm{pre}},
 \qquad
-y_{\mathrm{post}} = \tau(z)\,w + \mu(z) + \varepsilon_{\mathrm{post}}.
+y_{\mathrm{post}} = \tau(z) w + \mu(z) + \varepsilon_{\mathrm{post}}.
 $$
 
 Because $\mu(z)$ is shared, $y_{\mathrm{pre}}$ is correlated with $y_{\mathrm{post}}$, and $y_{\mathrm{pre}}$ does not contain $\tau(z)$. Because $\mu(z)$ and $\tau(z)$ are nonlinear, a straight line in $z$ leaves structure behind.
@@ -53,7 +53,7 @@ $$
 The shared center cancels, and the estimate collapses to one line:
 
 $$
-\hat\tau(\theta) = \hat\tau_{\mathrm{naive}} - \theta\,\Delta_{\mathrm{pre}},
+\hat\tau(\theta) = \hat\tau_{\mathrm{naive}} - \theta \Delta_{\mathrm{pre}},
 \qquad
 \Delta_{\mathrm{pre}} = \bar y_{\mathrm{pre},T} - \bar y_{\mathrm{pre},C}.
 $$
@@ -75,7 +75,7 @@ Minimizing $\mathrm{Var}(\hat\tau(\theta))$ is therefore the same as minimizing
 $$
 v(\theta)
 = \mathrm{Var}(y_{\mathrm{post}})
-- 2\theta\,\mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}})
+- 2\theta \mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}})
 + \theta^2\mathrm{Var}(y_{\mathrm{pre}}).
 $$
 
@@ -88,7 +88,7 @@ $$
 That is the regression of post on pre. Substituting it back into $v(\theta)$ leaves $\mathrm{Var}(y_{\mathrm{post}})(1-\rho^2)$, with $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$. The arm-size factor is common to both estimators, so
 
 $$
-\mathrm{Var}\bigl(\hat\tau(\theta^\star)\bigr) = \mathrm{Var}(\hat\tau_{\mathrm{naive}})\,(1-\rho^2).
+\mathrm{Var}\bigl(\hat\tau(\theta^\star)\bigr) = \mathrm{Var}(\hat\tau_{\mathrm{naive}}) (1-\rho^2).
 $$
 
 The fraction of variance removed is the fraction of post-period variance linearly explained by the pre-period outcome. `cuped_one_theta` plugs in the sample slope. Estimating $\theta$ changes the ratio by a smaller-order term.
@@ -106,7 +106,7 @@ in every dataset, for any slope. The variance is then the naive variance. Standa
 Analysis of covariance (ANCOVA) regresses the post-period outcome on treatment, the centered features, and their interaction:
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta^\top (z - \bar z) + w\,\bigl(\gamma^\top (z - \bar z)\bigr) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top (z - \bar z) + w \bigl(\gamma^\top (z - \bar z)\bigr) + \varepsilon.
 $$
 
 $\hat\tau$ is the coefficient on $w$. Centering keeps that coefficient equal to the average treatment effect. $\gamma$ lets the slope on $z$ differ by arm. If the conditional mean is nonlinear in $z$, this linear model leaves residual structure behind.
@@ -118,7 +118,7 @@ The machine learning regression-adjusted treatment effect estimator (MLRATE; Guo
 The starting point is Lin's interacted regression (Lin, 2013) on the pre-treatment covariates $x = (y_{\mathrm{pre}}, z)$:
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta^\top x + w\,(\gamma^\top x) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top x + w (\gamma^\top x) + \varepsilon.
 $$
 
 When $x$ is centered, the coefficient on $w$ is the average treatment effect. A linear equation in $x$ cannot follow a nonlinear relationship, or interactions among the covariates, so a straight line leaves predictable variation behind.
@@ -134,7 +134,7 @@ The function $g$ is that fit of the observed $y_{\mathrm{post}}$. Treatment is n
 The prediction is cross-fit. The sample is split into folds. Each unit's $\hat y$ comes from a model trained on the other folds, so the prediction is not fit to the same outcome noise used to estimate $\tau$. Center $\hat y$ and fit
 
 $$
-y_{\mathrm{post}} = \alpha + \tau w + \beta\,(\hat y - \bar{\hat y}) + \gamma\, w\,(\hat y - \bar{\hat y}) + \varepsilon.
+y_{\mathrm{post}} = \alpha + \tau w + \beta (\hat y - \bar{\hat y}) + \gamma  w (\hat y - \bar{\hat y}) + \varepsilon.
 $$
 
 $\hat\tau$ is the coefficient on $w$. Because $\hat y - \bar{\hat y}$ has mean zero, the interaction averages out and that coefficient is the average treatment effect. The interaction lets the adjustment differ by arm when $\tau(z)$ varies.
