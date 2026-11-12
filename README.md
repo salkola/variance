@@ -14,7 +14,7 @@ Tables and figures are written to `output/`. The numbers in this README come fro
 
 ## What is being estimated
 
-Each unit has a post-period outcome $y_{\mathrm{post}}$, a binary treatment $w \in {0,1}$, a pre-period outcome $y_{\mathrm{pre}}$, and features $z$. Treatment is assigned by an independent coin flip, so it is independent of $y_{\mathrm{pre}}$ and $z$. The ATE on the post-period outcome is
+Each unit has a post-period outcome $y_{\mathrm{post}}$, a binary treatment $w \in \lbrace 0,1 \rbrace$, a pre-period outcome $y_{\mathrm{pre}}$, and features $z$. Treatment is assigned by an independent coin flip, so it is independent of $y_{\mathrm{pre}}$ and $z$. The ATE on the post-period outcome is
 
 $$
 \tau = \mathbb{E}[y_{\mathrm{post}} \mid w{=}1] - \mathbb{E}[y_{\mathrm{post}} \mid w{=}0].
@@ -74,9 +74,9 @@ Minimizing $\mathrm{Var}(\hat\tau(\theta))$ is therefore the same as minimizing
 
 $$
 v(\theta)
-= \mathrm{Var}(y_{\mathrm{post}})
-- 2\theta \mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}})
-+ \theta^2\mathrm{Var}(y_{\mathrm{pre}}).
+= \mathrm{Var}(y_{\mathrm{post}}) -
+2\theta \mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}}) +
+\theta^2\mathrm{Var}(y_{\mathrm{pre}}).
 $$
 
 Set the derivative $v'(\theta) = -2\mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}}) + 2\theta\mathrm{Var}(y_{\mathrm{pre}})$ to zero:
