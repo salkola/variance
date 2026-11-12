@@ -164,7 +164,7 @@ Rows are ordered by sampling variance of $\hat\tau$, smallest first. Let $\hat\t
 - **var** is the sample variance of the 200 estimates. It measures how much $\hat\tau$ moves from one experiment to the next.
 - **var_vs_naive** is that variance divided by the naive variance. Values below 1 are variance reduction.
 
-When the bias is tiny, as it is in this table, $\mathrm{rmse} \simeq \sqrt{\mathrm{var}}$. The variance is the square of that typical error, which is why its numeric value is much smaller.
+When the bias is tiny, as it is in this table, $\mathrm{var} \simeq \mathrm{rmse}^2$. That is why the variance column is numerically much smaller than the RMSE column.
 
 The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the Monte Carlo summaries. They describe uncertainty from using 200 experiments, not the confidence interval of one field experiment.
 
