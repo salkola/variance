@@ -157,7 +157,14 @@ Every estimator below targets the same $\tau$. They differ in which pre-treatmen
 
 Settings: 10,000 units per experiment, 200 independent experiments, true average $\tau = 0.08$, with a nonlinear unit-level deviation $\tau(z)$ around that average. Across experiments, $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$ has mean $0.695$ (standard deviation $0.006$). Then $1-\bar\rho^2 \approx 0.517$. Scalar CUPED lands at $0.488$, close to that benchmark.
 
-Rows are ordered by sampling variance of $\hat\tau$, smallest first. `var_vs_naive` is that variance divided by the naive variance. Values below 1 are variance reduction. The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the Monte Carlo summaries. They describe uncertainty from using 200 experiments, not the confidence interval of one field experiment.
+Rows are ordered by sampling variance of $\hat\tau$, smallest first. Let $\hat\tau_i$ be the estimate from experiment $i$, let $N = 200$ be the number of experiments, and let $\tau = 0.08$.
+
+- **bias** is $\overline{\hat\tau} - \tau$: the average estimate minus the truth.
+- **rmse** is $\sqrt{\frac{1}{N}\sum_{i=1}^{N}(\hat\tau_i - \tau)^2}$: the typical size of the error in one experiment.
+- **var** is the sample variance of the 200 estimates. It measures how much $\hat\tau$ moves from one experiment to the next.
+- **var_vs_naive** is that variance divided by the naive variance. Values below 1 are variance reduction.
+
+The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the Monte Carlo summaries. They describe uncertainty from using 200 experiments, not the confidence interval of one field experiment.
 
 | Method | bias | rmse | var | var_vs_naive |
 | --- | --- | --- | --- | --- |
