@@ -18,10 +18,8 @@ from config import CUPED_DEFAULT_PRE_MEAN
 
 CupedMode = Literal[
     "naive_diff",
-    "cuped_known_mean",
     "cuped_one_theta",
     "cuped_two_theta",
-    "cuped_full_sample",
     "cuped_multivariate",
     "ancova_ols",
 ]
@@ -56,8 +54,9 @@ def estimate_ate_cuped(
     y_pre
         Pre-period outcome(s): shape (n,) or (n, k) for multivariate CUPED.
     y_pre_pop_mean
-        For ``cuped_known_mean``, population mean(s) for centering ``y_pre``.
-        If None and scalar ``y_pre``, uses ``CUPED_DEFAULT_PRE_MEAN`` from config.
+        For ``cuped_multivariate``, per-column reference means for centering ``y_pre``.
+        If None, uses ``CUPED_DEFAULT_PRE_MEAN / k`` per column. Any common reference
+        cancels in the between-arm difference, so it does not affect the ATE estimate.
     """
     y = np.asarray(y_post, dtype=np.float64).ravel()
     treat = np.asarray(w, dtype=np.float64).ravel()
@@ -79,8 +78,10 @@ def estimate_ate_cuped(
         return CupedResult(ate_hat=ate, se_delta=se, theta=None)
 
     if mode == "ancova_ols":
+        # Centered covariates, plus a treatment interaction so the slope can differ by arm.
+        # With centering, the coefficient on treatment is the ATE.
         pre_c = pre - pre.mean(axis=0, keepdims=True)
-        design = np.column_stack([np.ones(n), treat, pre_c])
+        design = np.column_stack([np.ones(n), treat, pre_c, treat[:, None] * pre_c])
         beta, *_ = np.linalg.lstsq(design, y, rcond=None)
         ate = float(beta[1])
         resid = y - design @ beta
@@ -88,17 +89,6 @@ def estimate_ate_cuped(
         inv_xt_x = np.linalg.pinv(design.T @ design)
         se = float(np.sqrt(inv_xt_x[1, 1] * (resid @ resid) / dof))
         return CupedResult(ate_hat=ate, se_delta=se, theta=beta[2:].copy())
-
-    if mode == "cuped_known_mean":
-        if pre.shape[1] != 1:
-            raise ValueError("cuped_known_mean expects a scalar pre-period outcome.")
-        mu = CUPED_DEFAULT_PRE_MEAN if y_pre_pop_mean is None else float(y_pre_pop_mean)
-        x0 = pre[:, 0]
-        theta = float(np.cov(y, x0, ddof=1)[0, 1] / np.var(x0, ddof=1))
-        y_adj = y - theta * (x0 - mu)
-        ate = float(y_adj[w1].mean() - y_adj[w0].mean())
-        se = _se_two_sample_mean_diff(y_adj[w1], y_adj[w0])
-        return CupedResult(ate_hat=ate, se_delta=se, theta=theta)
 
     if mode == "cuped_one_theta":
         if pre.shape[1] != 1:
@@ -136,9 +126,6 @@ def estimate_ate_cuped(
         ate = float(y_adj[w1].mean() - y_adj[w0].mean())
         se = _se_two_sample_mean_diff(y_adj[w1], y_adj[w0])
         return CupedResult(ate_hat=ate, se_delta=se, theta=np.array([theta_t, theta_c]))
-
-    if mode == "cuped_full_sample":
-        return estimate_ate_cuped(y_post, w, y_pre, "cuped_one_theta", y_pre_pop_mean)
 
     if mode == "cuped_multivariate":
         k = pre.shape[1]

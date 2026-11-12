@@ -1,271 +1,217 @@
-# Variance reduction: CUPED vs Double ML
+# Variance Reduction in Randomized Experiments: CUPED and MLRATE
 
-In randomized experiments, the **average treatment effect (ATE)** on a post-period outcome is often estimated by a simple **difference in means**. That estimator is unbiased, but it can be **noisy** when units differ a lot in baseline “potential” outcomes. A common fix is to use **pre-experiment information** (a pre-period outcome $y_{\text{pre}}$) or **covariates** $z$ to **partial out** predictable heterogeneity and shrink the sampling variance of the ATE—without changing the estimand under randomization.
+A difference in means is an unbiased estimator of the average treatment effect (ATE) in a randomized experiment, and it is noisy when units differ a lot before the experiment starts. A pre-period outcome and covariates measured before assignment can predict much of the post-period outcome.
 
-This repository **simulates** an ad-style **RCT** (Randomized Controlled Trial; treatment $w$ is assigned at random, independent of $y_{\text{pre}}$ and $z$) (see `data/synthetic_ads.py`), then compares several **ATE estimators** that differ in how aggressively they exploit $y_{\text{pre}}$ and $z$. The point is not any single table of numbers: those numbers are just **one Monte Carlo snapshot** for whatever settings live in `config.py` (sample size, noise, number of replications).
+This repository simulates an ad-style randomized controlled trial (RCT) and compares estimators that use that information to shrink the sampling variance of the ATE. Every estimator targets the same treatment effect. They differ in how much predictable variation they remove.
 
-Run:
+## Simulation
 
 ```bash
-python3 run_comparison.py
+python3 run_simulation.py
 ```
 
-Plots and formatted tables are written under `output/`.
+Tables and figures are written to `output/`. The numbers in this README come from one Monte Carlo run of the settings in `config.py`. Changing the sample size, the noise, or the number of replications can change which estimator has the smallest variance. The reason each method reduces variance stays the same.
 
+## What is being estimated
 
-## Goal and estimand
-
-We observe **post-period outcome** $y_{\text{post}}$, **binary treatment** $w$ ∈ {0, 1} ($w = 1$: treated arm, $w = 0$: control arm; assigned at experiment start t=0), and (optionally) **pre-period outcome** $y_{\text{pre}}$ and features $z$. Under **random assignment**, the ATE on $y_{\text{post}}$ is
-
-$$
-\tau = \mathbb{E}[y_{\text{post}} \mid w{=}1] - \mathbb{E}[y_{\text{post}} \mid w{=}0].
-$$
-
-Every estimator below is built to target **that same** $\tau$ in this RCT setting; they differ in **efficiency** (sampling variance) and sometimes in **finite-sample bias** if the working model is a poor approximation.
-
-### Notation: outcomes $y$, features $z$, and noise
-
-We write **outcomes with a period subscript** so “y” is not a single ambiguous symbol:
-
-- **$y_{\text{pre}}$**: pre-period (pre-experiment) outcome for each unit—what you would have measured before treatment starts (t < 0).
-- **$y_{\text{post}}$**: post-period outcome used for the experiment’s primary analysis and for $\tau$ (t $\ge$ 0).
-
-**$z$**: vector of **unit-level features** (in the simulator: latent “context” after a fixed correlation transform—think campaign/audience/seasonality–like inputs). Some estimators adjust using $z$ directly (`ancova_zx`, Double ML); CUPED-style rows use $y_{\text{pre}}$ (and multivariate pre columns built from the same $z$).
-
-**Noise (simulator only):** the synthetic **data generating process (DGP)** in `data/synthetic_ads.py` builds a shared nonlinear signal $g(z)$, then adds **independent** mean-zero Gaussian shocks to pre and post:
-
-- **$\epsilon_\text{pre}$**, **$\epsilon_\text{post}$**: idiosyncratic noise in $y_{\text{pre}}$ and $y_{\text{post}}$ (scaled by `DGP_Y_PRE_NOISE_SCALE` and `DGP_Y_POST_NOISE_SCALE` in `config.py`). They are **independent of each other** and of $w$.
-
-**$g(z)$**: deterministic part of both periods’ outcomes before noise; $y_{\text{post}}$ also adds **`true_ate * w`**. Details and functional form live in `AdsRCTDGP` in code, not in the table.
-
-
-## Estimators
-
-### Naive difference in means
+Each unit has a post-period outcome $y_{\mathrm{post}}$, a binary treatment $w \in \{0,1\}$, a pre-period outcome $y_{\mathrm{pre}}$, and features $z$. Treatment is assigned by an independent coin flip, so it is independent of $y_{\mathrm{pre}}$ and $z$. The ATE on the post-period outcome is
 
 $$
-\hat\tau_{\text{naive}} = \bar y_{\text{post},1} - \bar y_{\text{post},0}.
+\tau = \mathbb{E}[y_{\mathrm{post}} \mid w{=}1] - \mathbb{E}[y_{\mathrm{post}} \mid w{=}0].
 $$
 
-Uses only $y_{\text{post}}$ and $w$. This is the **reference**: easy to interpret and correctly centered under RCT, but it ignores information in $y_{\text{pre}}$ and $z$ that could reduce noise.
-
-### CUPED (scalar $y_{\text{pre}}$): `cuped_known_pre_mean` and `cuped_one_theta`
-
-**CUPED** (Controlled-experiment Using Pre-Experiment Data) uses a pre-period outcome that is **correlated** with $y_{\text{post}}$ to re-express the analysis in terms of an adjusted post outcome whose **treatment contrast**—the **difference in mean** $y_{\text{post}}$ between arms—has lower variance.
-
-Here “**scalar**” means each unit contributes **one number** $y_{\text{pre},i}$ (a single pre-period metric), rather than a vector of multiple pre metrics.
-
-#### ATE
-
-Define an adjusted outcome:
+In the simulator both periods share a nonlinear baseline $\mu(z)$. Independent noise is added to each period, and the post-period outcome adds a unit-level effect $\tau(z)w$ whose sample average is $\tau$:
 
 $$
-y^{\text{adj}}_i(\theta,\mu)=y_{\text{post},i}-\theta\bigl(y_{\text{pre},i}-\mu\bigr),
+y_{\mathrm{pre}} = \mu(z) + \varepsilon_{\mathrm{pre}},
+\qquad
+y_{\mathrm{post}} = \tau(z)\,w + \mu(z) + \varepsilon_{\mathrm{post}}.
 $$
 
-and estimate ATE by a plain difference in means on $y^{\text{adj}}$:
+Because $\mu(z)$ is shared, $y_{\mathrm{pre}}$ is correlated with $y_{\mathrm{post}}$, and $y_{\mathrm{pre}}$ does not contain $\tau(z)$. Because $\mu(z)$ and $\tau(z)$ are nonlinear, a straight line in $z$ leaves structure behind.
+
+## Methods
+
+### Naive estimator
 
 $$
-\hat\tau_{\text{cuped}}(\theta,\mu)=\overline{y^{\text{adj}}}_T-\overline{y^{\text{adj}}}_C.
+\hat\tau_{\mathrm{naive}} = \bar y_{\mathrm{post},1} - \bar y_{\mathrm{post},0}.
 $$
 
-Under random assignment, $\mathbb{E}[\bar y_{\text{pre},T}-\bar y_{\text{pre},C}]=0$, so $\hat\tau_{\text{cuped}}(\theta,\mu)$ targets the same $\tau$ as $\hat\tau_{\text{naive}}$ for any fixed $(\theta,\mu)$. The whole point of CUPED is choosing $\theta$ to **minimize variance**.
+This is the reference. It uses only $y_{\mathrm{post}}$ and $w$.
 
-#### Slope
+### CUPED
 
-Let $X_i=y_{\text{pre},i}-\mu$ and $Y_i=y_{\text{post},i}$. The adjusted outcome is $Y_i-\theta X_i$. Its variance is
-
-$$
-\text{Var}(Y-\theta X)=\text{Var}(Y)-2\theta \cdot\text{Cov}(Y,X)+\theta^2\text{Var}(X).
-$$
-
-This quadratic is minimized at
+Controlled-experiment Using Pre-Experiment Data (CUPED; Deng et al., 2013) reduces the effect of chance baseline imbalance on the estimated treatment effect. It adjusts the post-period outcome with a pre-period outcome and then takes the same difference in means. With a slope $\theta$ and a center $\mu_{\mathrm{pre}}$ that is the same for both arms,
 
 $$
-\theta^\star=\frac{\text{Cov}(Y,X)}{\text{Var}(X)}=\frac{\text{Cov}(y_{\text{post}},y_{\text{pre}})}{\text{Var}(y_{\text{pre}})},
+y^{\mathrm{adj}}_i = y_{\mathrm{post},i} - \theta\bigl(y_{\mathrm{pre},i} - \mu_{\mathrm{pre}}\bigr),
+\qquad
+\hat\tau(\theta) = \overline{y^{\mathrm{adj}}}_T - \overline{y^{\mathrm{adj}}}_C.
 $$
 
-which is the pooled OLS slope of $y_{\text{post}}$ on $y_{\text{pre}}$ (centering by $\mu$ does not change the slope). In practice, we plug in the sample analogue $\hat\theta$ computed on the pooled data, form $y^{\text{adj}}$, and then take a standard difference in means.
-
-#### Intuition
-
-For a single realized RCT dataset, it is helpful to rewrite CUPED directly in terms of the **naive point estimate** and the **observed pre-period shift** between arms. Throughout this section, a **contrast** is a **between-arm difference in sample means** for a named outcome (e.g. $\bar y_{\text{post},T}-\bar y_{\text{post},C}$ for post, or $\Delta_{\text{pre}}$ for pre). Let
+The shared center cancels, and the estimate collapses to one line:
 
 $$
-\Delta_{\text{pre}}=\bar y_{\text{pre},T}-\bar y_{\text{pre},C}.
+\hat\tau(\theta) = \hat\tau_{\mathrm{naive}} - \theta\,\Delta_{\mathrm{pre}},
+\qquad
+\Delta_{\mathrm{pre}} = \bar y_{\mathrm{pre},T} - \bar y_{\mathrm{pre},C}.
 $$
 
-With a common reference $\mu$ (pooled mean or a known population mean), the CUPED estimate can be written as
+Under randomization $\mathbb{E}[\Delta_{\mathrm{pre}}]=0$, so the estimand is still $\tau$. In a finite sample $\Delta_{\mathrm{pre}}$ is usually not zero. Suppose the treated group happens to have a higher pre mean ($\Delta_{\mathrm{pre}}>0$) and pre predicts post ($\theta>0$). Part of $\hat\tau_{\mathrm{naive}}$ then comes from that baseline gap. Subtracting $\theta\Delta_{\mathrm{pre}}$ takes that part out, so the adjusted estimate is closer to the contrast you would see if the pre means matched in that draw.
+
+If $\Delta_{\mathrm{pre}}=0$, the adjustment is zero and CUPED equals the naive estimate for that draw. The smaller variance shows up across repeated experiments. In one experiment you still report a single estimate, and its standard error is smaller than the naive standard error because that sampling distribution is tighter.
+
+For a fixed slope, $\hat\tau(\theta)$ is a difference in means of $y_{\mathrm{post}}-\theta y_{\mathrm{pre}}$. Given the assignment, its variance is the unit variance times a factor that does not depend on $\theta$:
 
 $$
-\hat\tau_{\text{cuped}}=\hat\tau_{\text{naive}}-\hat\theta \cdot \Delta_{\text{pre}}.
+\mathrm{Var}\bigl(\hat\tau(\theta)\bigr)
+= \mathrm{Var}(y_{\mathrm{post}}-\theta y_{\mathrm{pre}})
+\Bigl(\frac{1}{n_T}+\frac{1}{n_C}\Bigr).
 $$
 
-Interpretation:
-
-- Under randomization, $\mathbb{E}[\Delta_{\text{pre}}]=0$, but in any **finite** sample $\Delta_{\text{pre}}$ is typically **nonzero** because treatment and control groups differ slightly in baseline composition.
-- The naive ATE is driven by **between-arm mean differences** in $y_{\text{post}}$. Part of the sampling variability in that between-arm contrast is tied to the same finite-sample imbalance in **between-arm** pre means, $\Delta_{\text{pre}}$. When $y_{\text{pre}}$ is correlated with $y_{\text{post}}$, the between-arm post contrast and $\Delta_{\text{pre}}$ **covary** across repeated experiments. Subtracting $\hat\theta\Delta_{\text{pre}}$ removes part of the sampling noise in the naive contrast. Under random assignment, it does not change the estimand: the average treatment effect (ATE) on $y_{\text{post}}$.
-- **Single sample (one run).** If, by chance, the treated group has a higher pre mean ($\Delta_{\text{pre}}>0$) and pre predicts post ($\hat\theta>0$), then part of the naive post-period contrast $\hat\tau_{\text{naive}}$ is **attributable to baseline composition**, not the treatment. The term $-\hat\theta \cdot \Delta_{\text{pre}}$ subtracts that component so the adjusted estimate is closer to the contrast you would expect if pre means were **perfectly balanced** in that draw. If $\Delta_{\text{pre}}\approx 0$, there is little imbalance to remove and CUPED is close to naive.
-- **Repeated sampling.** Over hypothetical replications of the experiment, the variance of $\hat\tau$ is smaller than that of $\hat\tau_{\text{naive}}$ when the adjustment successfully removes the **covarying** part of sampling noise. In a **single** realized trial you obtain one CUPED point estimate; its **standard error** and **confidence interval** are then typically **narrower** than for naive, because the sampling distribution of $\hat\tau$ is tighter (analytically, or from a **unit-level** bootstrap that resamples entities and recomputes $\hat\theta$ each resample).
-- If $\Delta_{\text{pre}}=0$ in a particular draw, the adjustment term is zero and CUPED coincides with naive for that draw; the variance gain is a **repeated-sampling** property, not a guarantee in every single finite sample.
-
-The two variants differ only in **$\mu$** (centering of $y_{\text{pre}}$):
-
-- **`cuped_known_pre_mean`**: $\mu$ is set to the configured “known” pre mean (`DGP_PRE_MEAN_TARGET` in `config.py`), aligned with how the simulator anchors $y_{\text{pre}}$.
-- **`cuped_one_theta`**: $\mu$ is the **sample mean** of $y_{\text{pre}}$ (pooled **single** $\hat\theta$).
-
-When $\mu$ is well specified and $n$ is large, these often behave almost the same.
-
-### Arm-specific θ (two θ’s): `cuped_two_theta`
-
-Instead of one pooled slope $\hat\theta$, estimate **separate** pre→post slopes within each arm, $\hat\theta_T$ and $\hat\theta_C$, then compare arms after adjusting each unit’s $y_{\text{post}}$ with its arm’s slope and a **common** pre reference.
+Minimizing $\mathrm{Var}(\hat\tau(\theta))$ is therefore the same as minimizing
 
 $$
-\mu_{\text{pre}} = \bar y_{\text{pre}}.
+v(\theta)
+= \mathrm{Var}(y_{\mathrm{post}})
+- 2\theta\,\mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}})
++ \theta^2\mathrm{Var}(y_{\mathrm{pre}}).
 $$
 
-Per unit:
+Set the derivative $v'(\theta) = -2\mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}}) + 2\theta\mathrm{Var}(y_{\mathrm{pre}})$ to zero:
 
 $$
-y^{\text{adj}}_i = y_{\text{post},i} - \hat\theta_{w_i}\bigl(y_{\text{pre},i} - \mu_{\text{pre}}\bigr)
+\theta^\star = \frac{\mathrm{Cov}(y_{\mathrm{post}}, y_{\mathrm{pre}})}{\mathrm{Var}(y_{\mathrm{pre}})}.
 $$
 
-and $\hat\tau$ is the difference in means of $y^{\text{adj}}$ between arms. When $\theta_T \neq \theta_C$, this differs from pooled scalar CUPED (one slope for both arms). With finite arms, estimating two slopes can be a bit noisier than one pooled $\hat\theta$.
-
-### Multivariate CUPED: `cuped_multi`
-
-Instead of one $y_{\text{pre}}$, we build several pre columns (`make_multivariate_y_pre` in `data/synthetic_ads.py`), then run the **multivariate** analogue: pooled linear adjustment using all pre columns (centered at default per-column means), then difference in means on the adjusted post outcome. Extra columns help when they carry **non-overlapping** predictive information about $y_{\text{post}}$.
-
-### ANCOVA / regression adjustment on features: `ancova_zx`
-
-Fit an OLS regression of $y_{\text{post}}$ on treatment and **centered** covariates:
+That is the regression of post on pre. Substituting it back into $v(\theta)$ leaves $\mathrm{Var}(y_{\mathrm{post}})(1-\rho^2)$, with $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$. The arm-size factor is common to both estimators, so
 
 $$
-y_{\text{post}} \approx \beta_0 + \tau w + \beta_z^\top (z - \bar z),
+\mathrm{Var}\bigl(\hat\tau(\theta^\star)\bigr) = \mathrm{Var}(\hat\tau_{\mathrm{naive}})\,(1-\rho^2).
 $$
 
-and read off $\hat\tau$ as the coefficient on $w$. Under an RCT, this is a standard **covariate adjustment** path: if the linear model captures outcome heterogeneity along $z$, the ATE estimate can be less noisy than the naive contrast. If the true conditional mean $\mathbb{E}[y_{\text{post}} \mid z]$ is **nonlinear**, a linear ANCOVA can leave residual structure on the table.
+The fraction of variance removed is the fraction of post-period variance linearly explained by the pre-period outcome. `cuped_one_theta` plugs in the sample slope. Estimating $\theta$ changes the ratio by a smaller-order term.
 
-### Double ML (partially linear regression): `dml_plr_gbdt` and `dml_plr_lasso`
-
-**Double machine learning** targets the same partially linear structure
+Which shared $\mu_{\mathrm{pre}}$ you use does not matter for the point estimate: a constant shift $\theta\mu_{\mathrm{pre}}$ cancels between arms. Centering inside each arm does matter, and it destroys the adjustment. If $\mu_{\mathrm{pre}}$ is the pre mean of unit $i$'s own arm, the centered pre-period averages to zero inside each arm, so
 
 $$
-y_{\text{post}} = \tau w + g(z) + \varepsilon,
+\hat\tau = \hat\tau_{\mathrm{naive}}
 $$
 
-but treats $g(z)$ as **unknown** and learns it with machine learning, using **cross-fitting** so overfitting bias is controlled (`doubleml`).
+in every dataset, for any slope. The variance is then the naive variance. Standard CUPED centers on one common pre mean so that $\Delta_{\mathrm{pre}}$ stays in the formula.
 
-- **`dml_plr_gbdt`**: flexible **gradient boosting** for the outcome nuisance $g(z)$, with a **random forest** for $\mathbb{E}[w \mid z]$ (under RCT the latter is nearly flat, but the estimator is written generically).
-- **`dml_plr_lasso`**: both nuisances use **`LassoCV`**—a linear, sparse high-dimensional workhorse. It shines when $g(z)$ is well approximated linearly; when $g(z)$ is curved or interactive, GBDT-style learners often fit better and can yield sharper ATE estimates.
+### ANCOVA
 
+Analysis of covariance (ANCOVA) regresses the post-period outcome on treatment, the centered features, and their interaction:
 
-## Monte Carlo summary
+$$
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top (z - \bar z) + w\,\bigl(\gamma^\top (z - \bar z)\bigr) + \varepsilon.
+$$
 
-`run_comparison.py` draws many **independent** synthetic datasets. For each replication it computes every $\hat\tau$ above and stores them in `output/mc_draws.txt`. `output/summary_table.txt` combines point summaries (bias, RMSE, variance, `var_vs_naive`) with **90% bootstrap percentile intervals** over Monte Carlo rows (`MC_BOOTSTRAP_B`, `MC_BOOTSTRAP_SEED`, `MC_CI_LEVEL = 0.90` in `config.py`) for $\mathbb{E}[\hat\tau]$ and for the variance ratio. Rows are sorted by **`var`** (ascending). Figures: `violin_ate_estimates.png`, `relative_variance.png` (bars include bootstrap error bars), `forest_tau.png` (MC mean ATE with horizontal bootstrap intervals and a line at true $\tau$; **y-axis sorted by sampling variance**—lowest `var` / best variance reduction at the **top**, same ordering idea as the summary table).
+$\hat\tau$ is the coefficient on $w$. Centering keeps that coefficient equal to the average treatment effect. $\gamma$ lets the slope on $z$ differ by arm. If the conditional mean is nonlinear in $z$, this linear model leaves residual structure behind.
 
-Let $\tau$ be the simulator’s true ATE (`DGP_TRUE_ATE`)—**constant across draws**—and let $\hat\tau_r$ be the **estimated** ATE from replication $r$ (one draw of data, one $\hat\tau$ per method). We do **not** use $\tau_r$: the estimand does not vary with $r$ in this setup.
+### MLRATE
 
-<!-- GitHub math rendering note:
-Use $...$ for inline math and $$...$$ for display math. -->
+The machine learning regression-adjusted treatment effect estimator (MLRATE; Guo et al., 2021) uses pre-treatment information to predict the post-period outcome. The part of that outcome the prediction captures is baseline variation. Removing that predictable part leaves a less noisy estimate of the average treatment effect.
 
+The starting point is Lin's interacted regression (Lin, 2013) on the pre-treatment covariates $x = (y_{\mathrm{pre}}, z)$:
 
-| Column                   | Meaning                                                                                                                                                                                                                                  |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **bias**                 | $\overline{\hat\tau} - \tau$: average deviation from truth across replications. |
-| **rmse**                 | $\sqrt{\frac{1}{R}\sum_r (\hat\tau_r - \tau)^2}$: typical error magnitude; combines bias and noise. |
-| **var**                  | Sample variance of $\hat\tau_r$ across replications (sampling variance of the point estimate). |
-| **var_vs_naive**         | $\mathrm{Var}(\hat\tau) / \mathrm{Var}(\hat\tau_{\text{naive}})$. Values **below 1** mean that estimator’s $\hat\tau$ is **less dispersed** across runs than the naive difference in means—i.e. **variance reduction** in repeated sampling. |
-| **`tau_mean_90%`**  | Monte Carlo mean $\hat\tau$ with **90% bootstrap** percentile interval over MC rows (mean ± [lo, hi]). |
-| **`var_ratio_90%`** | Point `var_vs_naive` with **90% bootstrap** percentile interval for the ratio on each resample (mean ± [lo, hi]). |
+$$
+y_{\mathrm{post}} = \alpha + \tau w + \beta^\top x + w\,(\gamma^\top x) + \varepsilon.
+$$
 
+When $x$ is centered, the coefficient on $w$ is the average treatment effect. A linear equation in $x$ cannot follow a nonlinear relationship, or interactions among the covariates, so a straight line leaves predictable variation behind.
 
-Sorting and magnitudes **change** if you change noise scales, n, the number of MC replications, or the DGP. Bootstrap columns quantify **Monte Carlo uncertainty** in the reported summaries, not uncertainty from a single field experiment.
+MLRATE replaces the vector $x$ with one prediction of the observed post-period outcome. A machine learning model is trained on the pre-treatment covariates only. Treatment is not an input. This comparison uses gradient boosting. The fitted values are
 
-For the strength of pre/post alignment in a given run batch, see **`output/rho_summary.txt`**: $\rho \approx \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$ per draw, then summarized.
+$$
+\hat y = g(y_{\mathrm{pre}}, z).
+$$
 
+The function $g$ is that fit of the observed $y_{\mathrm{post}}$. Treatment is not an argument of $g$, so the prediction averages over the treatment assignments in the training data.
 
-## Simulation results
+The prediction is cross-fit. The sample is split into folds. Each unit's $\hat y$ comes from a model trained on the other folds, so the prediction is not fit to the same outcome noise used to estimate $\tau$. Center $\hat y$ and fit
 
-This section summarizes the latest Monte Carlo outputs written under `output/` by `python3 run_comparison.py` (see top of this file).
+$$
+y_{\mathrm{post}} = \alpha + \tau w + \beta\,(\hat y - \bar{\hat y}) + \gamma\, w\,(\hat y - \bar{\hat y}) + \varepsilon.
+$$
 
-### Setup and pre/post linkage
+$\hat\tau$ is the coefficient on $w$. Because $\hat y - \bar{\hat y}$ has mean zero, the interaction averages out and that coefficient is the average treatment effect. The interaction lets the adjustment differ by arm when $\tau(z)$ varies.
 
-The synthetic RCT is constructed so that $y_{\text{pre}}$ (and features $z$) are predictive of $y_{\text{post}}$ while treatment $w$ is randomized. Across replications, the **pre/post correlation** is stable and fairly high (see `output/rho_summary.txt`):
+The slopes $\beta$ and $\gamma$ are estimated rather than fixed at 1. Subtracting $\hat y$ from $y_{\mathrm{post}}$ would assume a slope of 1, and a poor prediction would then add noise. A useful prediction soaks up baseline variation and the residual variance of $\hat\tau$ falls. A prediction that does not track the outcome gets slopes near zero, and the fit falls back toward the difference in means.
 
-- $\rho = \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$: mean $\approx 0.684$, std $\approx 0.013$, min $\approx 0.648$, max $\approx 0.720$
+## Estimators in the comparison
 
-That correlation is exactly what scalar CUPED exploits; multivariate CUPED and DML can additionally exploit other predictive directions (multiple pre columns or nonlinear structure in $z$).
+Every estimator below targets the same $\tau$. They differ in which pre-treatment information they use.
 
-### Point summaries
+| Estimator | Adjustment | When it helps |
+| --- | --- | --- |
+| `cuped_one_theta` | One pooled pre→post slope, common center | Pre and post move together linearly |
+| `cuped_two_theta` | Separate slopes by arm, still one common center | The pre→post slope differs by arm; estimating two slopes costs a little precision |
+| `cuped_multi` | Several pre-period columns, one pooled linear fit | Those columns carry predictive information that a single $y_{\mathrm{pre}}$ misses |
+| `ancova` | OLS of $y_{\mathrm{post}}$ on $w$, centered $z$, and their interaction | A straight line in $z$ captures the outcome, and the slope may differ by arm |
+| `mlrate` | Cross-fit prediction $\hat y = g(y_{\mathrm{pre}}, z)$, then Lin regression on centered $\hat y$ | The baseline or the effect is nonlinear in the covariates |
 
-Rows in `output/summary_table.txt` are sorted by **sampling variance** `var` (ascending). Here are the key columns (bias, RMSE, var, and variance ratio vs naive):
+## Simulation run
 
+Settings: 10,000 units per experiment, 200 independent experiments, true average $\tau = 0.08$, with a nonlinear unit-level deviation $\tau(z)$ around that average. Across experiments, $\rho = \mathrm{Corr}(y_{\mathrm{post}}, y_{\mathrm{pre}})$ has mean $0.695$ (standard deviation $0.006$). Then $1-\bar\rho^2 \approx 0.517$. Scalar CUPED lands at $0.488$, close to that benchmark.
 
-| Method               | bias     | rmse        | var         | var_vs_naive |
-| -------------------- | -------- | ----------- | ----------- | ------------ |
-| **dml_plr_gbdt**     | −0.00191 | **0.01334** | **0.00018** | **0.32776**  |
-| **cuped_multi**      | −0.00074 | 0.01370     | 0.00019     | 0.35215      |
-| cuped_known_pre_mean | −0.00091 | 0.01665     | 0.00028     | 0.52011      |
-| cuped_one_theta      | −0.00091 | 0.01665     | 0.00028     | 0.52011      |
-| cuped_two_theta      | −0.00088 | 0.01666     | 0.00028     | 0.52061      |
-| ancova_zx            | −0.00128 | 0.02155     | 0.00047     | 0.87074      |
-| dml_plr_lasso        | −0.00130 | 0.02174     | 0.00048     | 0.88613      |
-| **naive**            | −0.00084 | **0.02307** | 0.00054     | 1.00000      |
+Rows are ordered by sampling variance of $\hat\tau$, smallest first. `var_vs_naive` is that variance divided by the naive variance. Values below 1 are variance reduction. The intervals in `output/summary_table.txt` are 90% bootstrap intervals for the Monte Carlo summaries. They describe uncertainty from using 200 experiments, not the confidence interval of one field experiment.
 
+| Method | bias | rmse | var | var_vs_naive |
+| --- | --- | --- | --- | --- |
+| **mlrate** | 0.00009 | **0.00744** | **0.00006** | **0.281** |
+| **cuped_multi** | 0.00052 | 0.00820 | 0.00007 | 0.340 |
+| cuped_two_theta | −0.00010 | 0.00981 | 0.00010 | 0.488 |
+| cuped_one_theta | −0.00011 | 0.00981 | 0.00010 | 0.488 |
+| ancova | 0.00031 | 0.01330 | 0.00018 | 0.896 |
+| **naive** | 0.00034 | **0.01405** | 0.00020 | 1.000 |
 
-Interpretation:
-
-- **Variance reduction**: every adjusted method has `var_vs_naive < 1`. The best precision in this run is **`dml_plr_gbdt`** (about **0.33×** the naive variance), followed by **`cuped_multi`** (**0.35×**). Scalar CUPED variants cluster at **0.52×**, and linear adjustment paths (**`ancova_zx`**, **`dml_plr_lasso`**) are only modestly better than naive (**0.87–0.89×**).
-- **Bias vs RMSE**: biases are small relative to RMSE, so error is dominated by **variance** rather than systematic shift.
-- **Bootstrap intervals**: the table also reports 90% bootstrap intervals over Monte Carlo rows for the MC mean ATE and for the variance ratio; these quantify **Monte Carlo uncertainty** in the reported summaries.
-
-### Figures
-
-All figures are generated from the same MC draws and are ordered consistently by sampling variance.
-
-- **Relative variance vs naive** (`output/relative_variance.png`): bars show `Var(τ̂)/Var(naive)` with 90% bootstrap intervals.
-  - **Ordering**: methods run **left → right** by increasing sampling variance (same idea as the summary table); the dashed line at **1** is naive.
-  - **Takeaway**: **`dml_plr_gbdt`** and **`cuped_multi`** show the **largest** variance deflation; linear-on-$z$ methods sit only modestly below **1** (often ~**0.87–0.9×** naive in this run), with comparatively short bars but ratios still far from the best few.
+Relative variance, lowest on the left. The dashed line is the naive estimator.
 
 ![](output/relative_variance.png)
 
-- **Forest plot of MC mean ATE** (`output/forest_tau.png`): points show MC mean $\hat\tau$ with 90% bootstrap intervals; the dashed vertical line is the true ATE.
-  - **Precision**: **narrower** horizontal intervals at the **top** = lower `var` / more stable $\hat\tau$ across MC replications; **`naive`** is widest at the bottom.
-  - **Coverage**: in this snapshot, every interval **crosses** the true $\tau$ line—differences are mostly about **width** (efficiency), not obvious systematic miss.
+Monte Carlo mean of $\hat\tau$, with a 90% bootstrap interval. The red line is the true ATE. Narrower intervals sit at the top because those estimators have smaller sampling variance.
 
 ![](output/forest_tau.png)
 
-- **Violin plot of ATE draws** (`output/violin_ate_estimates.png`): full distribution of $\hat\tau$ across replications; dashed horizontal line is the true ATE.
-  - **Spread**: violins get **wider** left → right as `var` increases; **`dml_plr_gbdt`** is the tightest cloud, **`naive`** the most dispersed.
-  - **Centering**: box medians sit **near** the true ATE for all methods here; the plot emphasizes **sampling noise** more than large bias.
+The full set of $\hat\tau$ draws. The red line is the true ATE. Spread grows from left to right as sampling variance grows.
 
 ![](output/violin_ate_estimates.png)
 
+## Takeaways
 
+- Bias is small next to RMSE for every method, so the error is sampling noise.
+- With $\rho \approx 0.695$, scalar CUPED cuts the variance about in half, close to $1-\rho^2$. `cuped_multi` goes further, to **0.340×** the naive variance, because the extra pre-period columns carry information a single $y_{\mathrm{pre}}$ misses.
+- `mlrate` is the most precise here, at **0.281×** naive. It predicts $y_{\mathrm{post}}$ from $y_{\mathrm{pre}}$ and $z$, then lets that adjustment differ by arm.
+- ANCOVA, including the treatment interaction, reaches only **0.896×** naive. Most of $\tau(z)$ and nearly all of $\mu(z)$ are nonlinear in $z$, so the extra slope removes almost no residual variance.
+- Separate slopes on $y_{\mathrm{pre}}$ (`cuped_two_theta`) match the single slope. The pre-period outcome does not contain $\tau(z)$, so a second pre-period slope has nothing extra to fit.
 
-### Takeaways
+## Code
 
-- With $\rho \approx 0.68$, **CUPED** delivers meaningful variance reduction; in this DGP, **multivariate CUPED** improves further over scalar CUPED.
-- **DML with a flexible learner** (`dml_plr_gbdt`) is most efficient here, consistent with nonlinear outcome structure.
-- Linear adjustments on $z$ (`ancova_zx`, `dml_plr_lasso`) are close to each other and only slightly better than naive in this configuration.
+The math above is implemented in a few files. Names in the tables match the estimator names in the code.
 
-These rankings can change with `config.py` (sample size, noise scales, DGP details, number of MC replications).
+| Piece | Where |
+| --- | --- |
+| Run the simulation and write `output/` | `run_simulation.py` |
+| Sample size, noise, seeds, estimator list | `config.py` |
+| Synthetic RCT, including $\mu(z)$ | `data/synthetic_ads.py` (`AdsRCTDGP`) |
+| Extra pre-period columns for `cuped_multi` | `make_multivariate_y_pre` in the same file |
+| Naive, CUPED, ANCOVA | `models/cuped.py` |
+| MLRATE | `models/mlrate.py` |
+| One $\hat\tau$ per experiment | `output/mc_draws.txt` |
+| Bias, RMSE, variance, bootstrap intervals | `output/summary_table.txt` |
+| Pre/post correlation | `output/rho_summary.txt` |
 
+`MC_N_REPS` is the number of experiments. `MC_N_UNITS` is the number of units in each one. `MC_SEED_OFFSET` shifts the dataset seeds. `MC_BOOTSTRAP_SEED` only reseeds the interval calculation; the point estimates do not depend on it.
 
-## Sanity check: scalar CUPED and $1 - \rho^2$
+Centering scalar CUPED at a known pre mean matches `cuped_one_theta` exactly, since a shared center cancels, so that variant is not in the comparison.
 
-For **scalar** CUPED (one $y_{\text{pre}}$), a useful back-of-the-envelope is that variance reduction tracks the fraction of post variance not linearly explained by pre:
+## References
 
-$$
-\mathrm{Var}(\hat\tau_{\text{cuped}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 1 - \rho^2,
-$$
+Deng, A., Xu, Y., Kohavi, R., and Walker, T. (2013). Improving the sensitivity of online controlled experiments by utilizing pre-experiment data. *Proceedings of the Sixth ACM International Conference on Web Search and Data Mining (WSDM)*, 123–132. <https://exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf>
 
-where $\rho = \mathrm{Corr}(y_{\text{post}}, y_{\text{pre}})$.
+Lin, W. (2013). Agnostic notes on regression adjustments to experimental data: Reexamining Freedman's critique. *Annals of Applied Statistics*, 7(1), 295–318. <https://arxiv.org/abs/1208.2301>
 
-In the current run outputs (from `output/mc_draws.txt` / `output/rho_summary.txt`):
-
-- $\bar\rho \approx 0.684$ so $1 - \bar\rho^2 \approx 0.532$
-- empirical $\mathrm{Var}(\hat\tau_{\text{cuped}}) / \mathrm{Var}(\hat\tau_{\text{naive}}) \approx 0.520$ for **`cuped_one_theta`**
-
-In practice the empirical variance ratio and $1-\rho^2$ are **approximately the same** here; **finite-sample** noise (including estimating $\theta$ from data each replication) and mild departures from a purely linear pre–post link can shift the ratio by a **small** amount that is not meaningfully different.
+Guo, Y., Coey, D., Konutgan, M., Li, W., Schoener, C., and Goldman, M. (2021). Machine learning for variance reduction in online experiments. *Advances in Neural Information Processing Systems (NeurIPS)*, 34. <https://arxiv.org/abs/2106.07263>

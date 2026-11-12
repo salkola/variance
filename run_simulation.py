@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Monte Carlo comparison: naive diff, CUPED variants, and Double ML on synthetic ad conversions.
+Monte Carlo simulation comparing naive, CUPED, ANCOVA, and MLRATE on synthetic ad conversions.
 
 Run from repo root:
-  python run_comparison.py
+  python run_simulation.py
 
 Outputs formatted tables (``.txt``), printed summaries, ρ = Corr(Y_post, Y_pre), and figures under ``output/``.
 """
@@ -37,7 +37,7 @@ if str(ROOT) not in sys.path:
 
 from data.synthetic_ads import AdsRCTDGP, make_multivariate_y_pre  # noqa: E402
 from models.cuped import estimate_ate_cuped  # noqa: E402
-from models.dml import estimate_ate_dml_lasso, estimate_ate_dml_plr  # noqa: E402
+from models.mlrate import estimate_ate_mlrate  # noqa: E402
 
 RHO_COL = "rho_y_pre_y_post"
 
@@ -90,23 +90,18 @@ def _one_rep(seed: int, n_units: int, pre_mean_target: float, true_ate: float) -
         out[name] = ate
 
     put("naive", estimate_ate_cuped(y_post, w, y_pre, "naive_diff").ate_hat)
-    put(
-        "cuped_known_pre_mean",
-        estimate_ate_cuped(y_post, w, y_pre, "cuped_known_mean", y_pre_pop_mean=pre_mean_target).ate_hat,
-    )
     put("cuped_one_theta", estimate_ate_cuped(y_post, w, y_pre, "cuped_one_theta").ate_hat)
     put("cuped_two_theta", estimate_ate_cuped(y_post, w, y_pre, "cuped_two_theta").ate_hat)
-    put("ancova_zx", estimate_ate_cuped(y_post, w, z, "ancova_ols").ate_hat)
+    put("ancova", estimate_ate_cuped(y_post, w, z, "ancova_ols").ate_hat)
     put(
         "cuped_multi",
-        estimate_ate_cuped(y_post, w, y_pre_multi, "cuped_multivariate", y_pre_pop_mean=None).ate_hat,
+        estimate_ate_cuped(y_post, w, y_pre_multi, "cuped_multivariate").ate_hat,
     )
 
-    dml_gb = estimate_ate_dml_plr(y_post, w, z, random_state=seed % (2**31))
-    put("dml_plr_gbdt", dml_gb.ate_hat)
-
-    dml_la = estimate_ate_dml_lasso(y_post, w, z, random_state=seed % (2**31))
-    put("dml_plr_lasso", dml_la.ate_hat)
+    put(
+        "mlrate",
+        estimate_ate_mlrate(y_post, w, y_pre, z, random_state=seed % (2**31)),
+    )
 
     return out
 
@@ -120,6 +115,8 @@ def run_mc(
 ) -> pd.DataFrame:
     rows = []
     for r in range(n_reps):
+        if r % 20 == 0:
+            print(f"replication {r + 1}/{n_reps}", flush=True)
         rows.append(
             _one_rep(MC_SEED_OFFSET + r, n_units=n_units, pre_mean_target=pre_mean_target, true_ate=true_ate)
         )
@@ -223,11 +220,12 @@ def plot_violin(df: pd.DataFrame, truth: float, outdir: Path, method_order: list
 
     plt.figure(figsize=(11, 5))
     sns.violinplot(data=long, x="method", y="ate_hat", inner="box", cut=0, density_norm="width")
-    plt.axhline(truth, color="black", linestyle="--", linewidth=0.5, label="true ATE")
+    plt.axhline(truth, color="red", linestyle="--", linewidth=1.5, zorder=5, label="true ATE")
     plt.xticks(rotation=25, ha="right")
+    plt.xlabel("Method")
     plt.ylabel("Estimated ATE")
     plt.title("Distribution of ATE estimates (Monte Carlo) · Sorted by sampling Var")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper left", bbox_to_anchor=(0.02, 0.95), borderaxespad=0)
     plt.tight_layout()
     plt.savefig(outdir / "violin_ate_estimates.png", dpi=PLOT_DPI)
     plt.close()
@@ -254,11 +252,11 @@ def plot_variance_bar(
     plt.figure(figsize=(9, 4.5))
     plt.bar(x, y, yerr=yerr, capsize=4, color="steelblue", ecolor="black", alpha=0.85)
     plt.xticks(x, [str(i) for i in idx], rotation=25, ha="right")
-    plt.axhline(1.0, color="black", linestyle="--", linewidth=1, label="naive variance")
+    plt.axhline(1.0, color="red", linestyle="--", linewidth=1, label="naive variance")
     plt.ylabel("Var(hat) / Var(naive)")
     plt.ylim(0.0, 1.05)
     plt.title(f"Variance ratio vs naive ({pct}% bootstrap MC intervals)")
-    plt.legend()
+    plt.legend(loc="upper left", bbox_to_anchor=(0.02, 0.90), borderaxespad=0)
     plt.tight_layout()
     plt.savefig(outdir / "relative_variance.png", dpi=PLOT_DPI)
     plt.close()

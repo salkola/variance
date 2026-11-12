@@ -3,7 +3,8 @@ Synthetic ad conversion panel with a sharp intervention at t=0.
 
 Designed for variance-reduction comparisons (CUPED, Double ML):
 - Pre- and post-period outcomes share the same systematic component g(Z); independent
-  noise is drawn for each period. Post adds a randomized treatment effect at t=0.
+  noise is drawn for each period. Post adds a heterogeneous treatment effect tau(Z) * w
+  whose sample average equals the configured ATE.
 - ``y_pre`` is shifted to mean ``pre_mean_target`` (default from ``DGP_PRE_MEAN_TARGET``).
 """
 
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from config import (
+    DGP_HTE_SCALE,
     DGP_N_FEATURES,
     DGP_PRE_MEAN_TARGET,
     DGP_TRUE_ATE,
@@ -31,6 +33,9 @@ class AdsRCTDGP:
     seed: int | None = 42
     true_ate: float = DGP_TRUE_ATE
     """Average treatment effect on the post-period outcome scale."""
+
+    hte_scale: float = DGP_HTE_SCALE
+    """Scale of the mean-zero deviation of the unit-level treatment effect around ``true_ate``."""
 
     pre_mean_target: float = DGP_PRE_MEAN_TARGET
     """Target sample mean for ``y_pre`` after shifting."""
@@ -59,7 +64,9 @@ class AdsRCTDGP:
 
         y_pre_raw = g_z + eps_pre
         y_pre = y_pre_raw - float(y_pre_raw.mean()) + self.pre_mean_target
-        y_post = self.true_ate * w + g_z + eps_post
+        # Sample average of tau(z) is exactly true_ate. y_pre does not contain it.
+        tau = self.true_ate + self.hte_scale * self._hte_deviation(z)
+        y_post = tau * w + g_z + eps_post
 
         return {
             "z": z.astype(np.float64),
@@ -86,6 +93,12 @@ class AdsRCTDGP:
         smooth = 0.22 * np.sin(2.1 * c) + 0.18 * (z[:, 3] ** 2)
         tail = 0.05 * np.tanh(z[:, 4:].sum(axis=1))
         return interaction + 0.55 * hinge1 + 0.42 * hinge2 + smooth + tail
+
+    @staticmethod
+    def _hte_deviation(z: np.ndarray) -> np.ndarray:
+        """Nonlinear treatment-effect deviation, centered to mean 0 on this sample."""
+        h = np.tanh(z[:, 0] * z[:, 1]) + 0.5 * np.maximum(z[:, 2], 0.0)
+        return h - float(h.mean())
 
 
 def make_multivariate_y_pre(
